@@ -118,3 +118,21 @@ export const catalogQuerySchema = z
       path: ["minPrice"],
     },
   );
+
+/** Body for POST /disputes — buyer files a refund dispute (ADR:
+ * adr-refund-escrow-mechanism.md, Option C). */
+export const fileDisputeSchema = z
+  .object({
+    resourceId: z.string().min(1),
+    buyerAddress: z.string().min(1),
+    amount: z.string().regex(/^\d+(\.\d+)?$/, "must be a non-negative decimal amount"),
+    reason: z.string().min(1),
+  })
+  .strict();
+
+/** Body for POST /disputes/:id/rule — admin rules on a pending dispute. */
+export const ruleDisputeSchema = z
+  .object({
+    decision: z.enum(["upheld", "denied"]),
+  })
+  .strict();
