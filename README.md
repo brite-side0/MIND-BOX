@@ -2,6 +2,8 @@
 
 MindBox is a payment-protected vault for digital resources built on Stellar. Creators store their work and MindBox wraps it with an HTTP 402 paywall using the [x402 protocol](docs/GLOSSARY.md#x402). Anyone with the resource URL — whether a human in a browser or an AI agent running autonomously — pays USDC on Stellar to access it.
 
+> **Status: scaffold fork.** This repository is a self-contained fork of the [MindVault](https://github.com/mind-vault-1/mindvault) project (see [NOTICE](NOTICE)), independently maintained as **MIND-BOX**. It compiles and its unit tests pass, but it is not a live deployment. Running it end-to-end requires supplying your own infrastructure: a Supabase project, Stellar testnet wallets (platform and agent), an OpenRouter API key, and your own deployed Soroban vault-registry contract. The placeholder wallet (`G...`) and contract (`C...`) identifiers throughout this repo must be replaced with values from your own deployment before anything runs against the network.
+
 ## The Problem
 
 Creators produce valuable digital work every day — datasets, research, code, prompts, trained models. But there is no simple way to protect and monetize this work for both human and machine consumers.
@@ -31,7 +33,7 @@ MindBox is built entirely on Stellar's infrastructure. Every payment that flows 
 
 **[Sponsored Agent Accounts](docs/GLOSSARY.md#sponsored-accounts)** — The MCP server uses the [stellar-sponsored-agent-account](https://github.com/oceans404/stellar-sponsored-agent-account) service to create wallets for AI agents. The service sponsors the ~1.5 XLM reserve needed to create an account and establish a USDC trustline, so an agent can get a wallet with zero upfront cost.
 
-**Two Platform Wallets** — MindBox operates two separate Stellar wallets. The platform wallet (`G...`) receives verification fees. The agent wallet (`G...`) pays for verification when publishing via the MCP server. Both are visible on Stellar Explorer with real USDC transactions flowing between them. Replace the `G...` / `C...` placeholders throughout this repo with the wallet and contract identifiers from your own deployment.
+**Two Platform Wallets** — A MindBox deployment uses two separate Stellar wallets. The platform wallet (`G...`) receives verification fees. The agent wallet (`G...`) pays for verification when publishing via the MCP server. When you deploy, you provide both wallets and fund them on the configured Stellar network; every fee and payment they handle is a real USDC transaction visible on Stellar Explorer. Replace the `G...` / `C...` placeholders throughout this repo with the wallet and contract identifiers from your own deployment.
 
 **Facilitator** — Payment verification and settlement is handled by the x402 facilitator at `x402.org/facilitator` (Coinbase, testnet, fees sponsored). The facilitator calls `/verify` to validate the signed auth entry and `/settle` to submit the transaction on-chain.
 
@@ -41,7 +43,7 @@ Before a resource goes live in the vault, a built-in AI agent reviews it for ori
 
 When a creator publishes a resource from the web app, their browser wallet pays the verification fee via x402. When an AI agent publishes through the MCP server, the agent's wallet pays the same fee through the same protocol.
 
-The verification agent has processed 7 verifications, approved 2, rejected 5, and earned $0.70 USDC. It correctly rejects test submissions and placeholder content while approving genuine resource listings. Its full activity feed is visible on the Agent page in the app.
+The agent is designed to reject test submissions and placeholder content while approving genuine resource listings, and it records each decision (approved/rejected, confidence, fee earned) so its running totals and activity feed surface on the Agent page in the app once a deployment starts processing real submissions.
 
 ## Who Uses MindBox
 
@@ -169,22 +171,24 @@ curl -i https://your-mindbox-deployment.example.com/resources/swcn98besxpp6t1u8e
 
 The `PAYMENT-REQUIRED` header contains the price, destination wallet, network, asset contract, and payment scheme. Any x402-compatible client handles it automatically.
 
-## What Is Real
+## What the System Does
 
-- Payments are real USDC transactions on Stellar testnet, settled through the x402 facilitator
-- The AI verification agent makes real LLM calls (via OpenRouter) and real x402 payments
-- The frontend connects real Stellar wallets and signs real Soroban auth entries
-- The platform and agent operate from two separate Stellar wallets with visible on-chain activity
-- Creator earnings are tracked from actual payment settlements
-- The MCP server creates real sponsored accounts on Stellar
-- Catalog search and filtering are built: the web app's `CatalogSearch` UI and the MCP `mindbox_search` tool both filter by keyword (matched against title and description), price range, resource type, and verification status. Filters are sent to `GET /resources` and applied server-side (see [docs/api-examples.md](docs/api-examples.md#browsing-the-catalog))
+When deployed with your own infrastructure, MindBox does the following — these are implemented in the codebase, not aspirational:
+
+- Payments flow as USDC transactions on the configured Stellar network (testnet by default), settled through the x402 facilitator
+- The AI verification agent makes LLM calls (via OpenRouter) and takes its verification fee via an x402 payment
+- The frontend connects Stellar wallets and signs Soroban auth entries for the buyer's payment
+- Fees and payments run through two separate Stellar wallets (platform and agent) that you configure and fund
+- Creator earnings are computed from settled payments and surfaced through the API
+- The MCP server provisions sponsored Stellar accounts for agents
+- Catalog search and filtering: the web app's `CatalogSearch` UI and the MCP `mindbox_search` tool both filter by keyword (matched against title and description), price range, resource type, and verification status. Filters are sent to `GET /resources` and applied server-side (see [docs/api-examples.md](docs/api-examples.md#browsing-the-catalog))
+- Rate limiting on the API endpoints
 
 ## What Is Not Yet Built
 
 - Recurring access or time-limited leases (currently per-request) — see the design spike in [docs/adr-time-limited-access-leases.md](docs/adr-time-limited-access-leases.md)
 - Full-text / indexed catalog search — current catalog filtering runs **in memory over the listed set** on each request (no database full-text index), which is fine at current scale but not a scalable search backend
-- Refund mechanism
-- Rate limiting
+- Refund mechanism — see the design spike in [docs/adr-refund-escrow-mechanism.md](docs/adr-refund-escrow-mechanism.md)
 - Mainnet deployment
 
 ## Tech Stack
