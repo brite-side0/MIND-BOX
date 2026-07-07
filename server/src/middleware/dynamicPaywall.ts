@@ -8,6 +8,16 @@ import { getLogger } from "../lib/logger.js";
 import { network, sharedX402ResourceServer } from "../lib/x402.js";
 import { getResource } from "../services/registryClient.js";
 import { getOnChainPrice, normalizeUsdcPrice } from "../lib/stellarRegistry.js";
+import { findActiveLeaseByToken } from "../services/leaseService.js";
+
+// Parse an `Authorization: Lease <token>` header into the opaque lease token,
+// or null when absent / not a Lease scheme. Backward-compatible: any other
+// Authorization value (or none) yields null and the per-request 402 flow runs.
+export function parseLeaseToken(authHeader: unknown): string | null {
+  if (typeof authHeader !== "string") return null;
+  const match = /^Lease\s+(.+)$/i.exec(authHeader.trim());
+  return match ? match[1].trim() : null;
+}
 
 // Cache middleware instances by resource ID to avoid re-creating on every request
 const middlewareCache = new Map<
@@ -33,6 +43,35 @@ export async function dynamicPaywall(req: Request, res: Response, next: NextFunc
   if (!resource.listed) {
     res.status(404).json({ error: "Resource not listed" });
     return;
+  }
+
+  // Lease short-circuit (ADR: Time-Limited Access Leases). BEFORE issuing a 402,
+  // if the caller presents a valid `Authorization: Lease <token>` for an active,
+  // non-revoked lease on this resource, deliver without any payment. This is
+  // strictly additive: no token, or an invalid/expired/revoked token, falls
+  // through to the unchanged per-request 402 flow below.
+  const leaseToken = parseLeaseToken(req.headers["authorization"]);
+  if (leaseToken) {
+    try {
+      const lease = await findActiveLeaseByToken(resourceId, leaseToken);
+      if (lease) {
+        (req as any).resource = resource;
+        (req as any).lease = lease;
+        getLogger().info(
+          { event: "paywall_lease_grant", resourceId, leaseId: lease.id },
+          "active lease presented; skipping 402",
+        );
+        next();
+        return;
+      }
+    } catch (err) {
+      // A lease lookup failure must never harden into a hard error — fall back
+      // to the normal paid flow so access is never wrongly denied by this check.
+      getLogger().warn(
+        { event: "paywall_lease_lookup_failed", resourceId, err },
+        "lease lookup failed; falling back to per-request 402 flow",
+      );
+    }
   }
 
   // Validate the DB price against the on-chain registry before serving a 402.
