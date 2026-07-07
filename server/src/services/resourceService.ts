@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql, type SQL } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { resources, publishers, verifications } from "../db/schema.js";
 import { uploadFile, deleteFile } from "../storage/supabaseStorage.js";
@@ -156,6 +156,70 @@ export type CatalogPage<T> = {
 
 const CATALOG_DEFAULT_LIMIT = 20;
 
+// Upper bound on the raw search term. tsquery parsing is cheap, but an unbounded
+// user string is still attacker-controlled input we shouldn't forward wholesale.
+const MAX_SEARCH_LENGTH = 200;
+
+/**
+ * Normalize a raw catalog `search` value into a usable query term, or
+ * `undefined` when there is effectively no search.
+ *
+ * Empty / whitespace-only input is treated as "no search" so the caller falls
+ * back to the plain (non-FTS) catalog path. The term is trimmed and capped at
+ * {@link MAX_SEARCH_LENGTH}; it is never concatenated into SQL — callers bind it
+ * as a parameter to `websearch_to_tsquery` (see {@link buildSearchPredicate}),
+ * which is injection-safe.
+ */
+export function normalizeSearchTerm(raw: string | undefined): string | undefined {
+  if (raw === undefined) return undefined;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return undefined;
+  return trimmed.slice(0, MAX_SEARCH_LENGTH);
+}
+
+// The tsquery derived from the (already-normalized) user term. `websearch_to_tsquery`
+// accepts human search syntax (quotes, `-negation`, `or`) and, crucially, treats
+// `term` as a bound parameter — never string-interpolated — so it is safe against
+// query injection.
+function searchTsQuery(term: string): SQL {
+  return sql`websearch_to_tsquery('english', ${term})`;
+}
+
+/** FTS match predicate: does a row's search_vector match the user's query? */
+export function buildSearchPredicate(term: string): SQL {
+  return sql`${resources.searchVector} @@ ${searchTsQuery(term)}`;
+}
+
+/** Relevance score for ordering FTS results (higher = better match). */
+export function buildSearchRank(term: string): SQL {
+  return sql`ts_rank(${resources.searchVector}, ${searchTsQuery(term)})`;
+}
+
+// FTS catalog query: same projection as queryCatalog, but the listed set is
+// narrowed by the tsvector match in Postgres (using the GIN index) and ordered
+// by relevance first, then recency. Remaining filters (price/type/status/owner)
+// and pagination are still applied in-memory by the caller.
+async function queryCatalogSearch(term: string) {
+  return db
+    .select({
+      id: resources.id,
+      title: resources.title,
+      description: resources.description,
+      price: resources.price,
+      resourceType: resources.resourceType,
+      mimeType: resources.mimeType,
+      thumbnailPath: resources.thumbnailPath,
+      verificationStatus: resources.verificationStatus,
+      publisherName: publishers.name,
+      walletAddress: resources.walletAddress,
+      createdAt: resources.createdAt,
+    })
+    .from(resources)
+    .innerJoin(publishers, eq(resources.publisherId, publishers.id))
+    .where(and(eq(resources.listed, true), buildSearchPredicate(term)))
+    .orderBy(desc(buildSearchRank(term)), desc(resources.createdAt));
+}
+
 function sortRows<T extends { price: string; title: string; createdAt: Date | string }>(
   rows: T[],
   sort: CatalogSort,
@@ -284,6 +348,33 @@ function catalogCacheKey(kind: "list" | "count", filters?: CatalogListFilters): 
   return `${kind}:` + JSON.stringify(norm, Object.keys(norm).sort());
 }
 
+// Resolve the filtered (but not yet sorted/paginated) row set for a filter combo.
+//
+// When a usable `search` term is present, the tsvector match runs in Postgres
+// (queryCatalogSearch) so results are relevance-ranked and index-backed rather
+// than substring-scanned in memory; the remaining filters still apply in-memory.
+// The FTS branch skips the shared full-set cache because the row set is
+// term-specific, but the per-filter pageCache in listCatalog/countCatalog still
+// caches the final response (its key already includes the search term).
+//
+// With no search term, behavior is unchanged: the full listed set is fetched
+// once (cached under CATALOG_KEY) and filtered entirely in memory.
+async function getFilteredRows(
+  filters?: CatalogListFilters,
+): Promise<Awaited<ReturnType<typeof queryCatalog>>> {
+  const term = normalizeSearchTerm(filters?.search);
+  if (term !== undefined) {
+    const rows = await queryCatalogSearch(term);
+    // Postgres already applied the FTS match; drop `search` so applyCatalogFilters
+    // doesn't additionally substring-filter these rows (which would wrongly
+    // discard valid stemmed/negated matches the tsquery accepted).
+    const rest = filters ? { ...filters, search: undefined } : undefined;
+    return applyCatalogFilters(rows, rest);
+  }
+  const rows = await getCachedCatalogRows();
+  return applyCatalogFilters(rows, filters);
+}
+
 // The full listed set is cached once under CATALOG_KEY; on top of that, each
 // distinct filter/sort/pagination combination caches its computed response under
 // a normalized key (#316) so popular identical queries skip the in-memory
@@ -303,8 +394,7 @@ export async function listCatalog(
     return cached as Awaited<ReturnType<typeof queryCatalog>>;
   }
 
-  const rows = await getCachedCatalogRows();
-  const filtered = applyCatalogFilters(rows, filters);
+  const filtered = await getFilteredRows(filters);
 
   const result = ((): Awaited<ReturnType<typeof queryCatalog>> => {
     if (!filters) return filtered;
@@ -325,8 +415,7 @@ export async function countCatalog(filters?: CatalogListFilters): Promise<number
   const cached = pageCache.get(cacheKey);
   if (cached !== undefined) return cached as number;
 
-  const rows = await getCachedCatalogRows();
-  const total = applyCatalogFilters(rows, filters).length;
+  const total = (await getFilteredRows(filters)).length;
   pageCache.set(cacheKey, total);
   return total;
 }
