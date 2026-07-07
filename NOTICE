@@ -1,0 +1,20 @@
+MIND-BOX
+========
+
+MIND-BOX is derived from the MindVault project:
+
+    https://github.com/mind-vault-1/mindvault
+
+MindVault is distributed under the MIT License. In accordance with that
+license, the upstream copyright and permission notice is preserved below.
+The full license text is available in the LICENSE file at the root of this
+repository.
+
+Upstream copyright notice (MIT License):
+
+    Copyright (c) 2026 MindBox contributors
+
+This fork (MIND-BOX) is independently maintained and is not affiliated with,
+endorsed by, or operated by the upstream MindVault authors. Modifications made
+in this fork — including rebranding and documentation changes — are the work of
+the MIND-BOX maintainers and are likewise provided under the MIT License.
