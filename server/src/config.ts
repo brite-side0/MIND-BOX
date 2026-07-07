@@ -102,8 +102,12 @@ const envSchema = z.object({
   // Optional Redis URL for a shared sliding-window rate-limit store (multi-instance).
   REDIS_URL: z.string().url().optional(),
 
-  // Optional HMAC-SHA256 request signatures for publisher mutations (off by default).
-  REQUIRE_REQUEST_SIGNATURE: z.coerce.boolean().default(false),
+  // Optional HMAC-SHA256 request signatures for publisher mutations. Left as
+  // a raw optional string (not z.coerce.boolean) so resolveRequireRequestSignature
+  // can tell "unset" apart from an explicit "false" — z.coerce.boolean() would
+  // otherwise coerce the non-empty string "false" to `true` via JS Boolean().
+  // The effective default (on in production, off elsewhere) is computed below.
+  REQUIRE_REQUEST_SIGNATURE: z.string().optional(),
   // Max clock skew for X-Timestamp when signatures are required (default 5 minutes).
   SIGNATURE_MAX_SKEW_MS: z.coerce.number().default(300_000),
 
@@ -122,6 +126,30 @@ const envSchema = z.object({
   // (#316). Bounds key cardinality; oldest entries are evicted (FIFO).
   CATALOG_CACHE_MAX_KEYS: z.coerce.number().int().min(1).default(200),
 });
+
+/**
+ * Computes the effective REQUIRE_REQUEST_SIGNATURE boolean.
+ *
+ * - If the env var is explicitly set (any value, including "false"), that
+ *   explicit choice always wins, regardless of NODE_ENV.
+ * - If the env var is unset, production defaults to `true` (both first-party
+ *   clients — mcp and web — already sign publisher mutations out of the box),
+ *   while development/test default to `false` for frictionless local iteration.
+ *
+ * Kept as a pure, exported function so it can be unit tested directly without
+ * importing the real config module (which calls process.exit(1) on invalid
+ * env — see config.test.ts / requestSignatureAuth.test.ts for the mocking
+ * pattern this enables).
+ */
+export function resolveRequireRequestSignature(
+  nodeEnv: string,
+  rawValue: string | undefined,
+): boolean {
+  if (rawValue === undefined) {
+    return nodeEnv === "production";
+  }
+  return rawValue.trim().toLowerCase() === "true";
+}
 
 const parsed = envSchema.safeParse(envWithDefaults);
 
@@ -153,4 +181,10 @@ if (networkIssues.length > 0) {
   process.exit(1);
 }
 
-export const config = parsed.data;
+export const config = {
+  ...parsed.data,
+  REQUIRE_REQUEST_SIGNATURE: resolveRequireRequestSignature(
+    parsed.data.NODE_ENV,
+    parsed.data.REQUIRE_REQUEST_SIGNATURE,
+  ),
+};
