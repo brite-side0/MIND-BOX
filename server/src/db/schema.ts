@@ -130,6 +130,15 @@ export const payments = pgTable(
     payerAddress: text("payer_address").notNull(),
     recipientAddress: text("recipient_address").notNull(),
     amount: text("amount").notNull(), // USDC amount
+    // On-chain settlement transaction/tx hash, when available (#Tier-2
+    // hardening). Populated best-effort from the x402 facilitator's
+    // X-PAYMENT-RESPONSE / PAYMENT-RESPONSE header after settlement completes
+    // (see routes/resources.ts). Nullable: absent for historical rows and for
+    // any payment where the header was missing or failed to parse. This is an
+    // audit/reconciliation field only — NOT a replay/double-spend guard (see
+    // lib/parseXPaymentResponse.ts for details); intentionally has no
+    // uniqueness constraint.
+    settlementTx: text("settlement_tx"),
     paidAt: timestamp("paid_at").defaultNow().notNull(),
   },
   (table) => ({
