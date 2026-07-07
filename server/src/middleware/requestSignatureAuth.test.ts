@@ -139,6 +139,50 @@ describe("requestSignatureAuth", () => {
   });
 });
 
+// Mirrors config.ts's exported `resolveRequireRequestSignature` byte-for-byte.
+// We deliberately do NOT import it from "../config.js" here: importing that
+// module (even just to pull a named export) runs its top-level env parsing,
+// which calls process.exit(1) on invalid/missing env — see the file-level
+// vi.mock("../config.js") above and the module comment on
+// resolveRequireRequestSignature in config.ts. Keeping this local copy lets
+// the helper's branching logic be exercised without that risk.
+function resolveRequireRequestSignature(nodeEnv: string, rawValue: string | undefined): boolean {
+  if (rawValue === undefined) {
+    return nodeEnv === "production";
+  }
+  return rawValue.trim().toLowerCase() === "true";
+}
+
+describe("resolveRequireRequestSignature", () => {
+  it("defaults to true in production when unset", () => {
+    expect(resolveRequireRequestSignature("production", undefined)).toBe(true);
+  });
+
+  it("respects an explicit false in production", () => {
+    expect(resolveRequireRequestSignature("production", "false")).toBe(false);
+  });
+
+  it("respects an explicit true in production", () => {
+    expect(resolveRequireRequestSignature("production", "true")).toBe(true);
+  });
+
+  it("defaults to false in development when unset", () => {
+    expect(resolveRequireRequestSignature("development", undefined)).toBe(false);
+  });
+
+  it("defaults to false in test when unset", () => {
+    expect(resolveRequireRequestSignature("test", undefined)).toBe(false);
+  });
+
+  it("respects an explicit true in development", () => {
+    expect(resolveRequireRequestSignature("development", "true")).toBe(true);
+  });
+
+  it("respects an explicit true in test", () => {
+    expect(resolveRequireRequestSignature("test", "true")).toBe(true);
+  });
+});
+
 describe("requestSignatureAuth disabled", () => {
   beforeEach(() => {
     vi.resetModules();
