@@ -1,17 +1,17 @@
-# ADR: Refund and Escrow Mechanisms for MindVault
+# ADR: Refund and Escrow Mechanisms for MindBox
 
-| Field       | Value                                              |
-|-------------|------------------------------------------------------|
-| **Status**  | Proposed                                             |
-| **Date**    | 2026-06-24                                           |
-| **Issue**   | [#178](https://github.com/mind-vault-1/mindvault/issues/178) |
-| **Authors** | morelucks                                            |
+| Field       | Value                                                    |
+| ----------- | -------------------------------------------------------- |
+| **Status**  | Proposed                                                 |
+| **Date**    | 2026-06-24                                               |
+| **Issue**   | [#178](https://github.com/mind-box-1/mindbox/issues/178) |
+| **Authors** | morelucks                                                |
 
 ---
 
 ## Context
 
-MindVault currently uses the **x402 protocol** for resource access payments. When a buyer requests a paywalled resource (`GET /resources/:id`), the server returns an HTTP 402 with payment details. The buyer signs a Soroban USDC authorization entry, retries with the signed proof, and the server settles via the x402 facilitator. USDC moves **directly from buyer to creator** — MindVault never custodies funds.
+MindBox currently uses the **x402 protocol** for resource access payments. When a buyer requests a paywalled resource (`GET /resources/:id`), the server returns an HTTP 402 with payment details. The buyer signs a Soroban USDC authorization entry, retries with the signed proof, and the server settles via the x402 facilitator. USDC moves **directly from buyer to creator** — MindBox never custodies funds.
 
 This model is elegant and simple, but it provides **no mechanism for refunds, disputes, or buyer protection**. Once settled, the USDC transfer is final. If a resource is misleading, broken, or not as described, the buyer has no recourse.
 
@@ -29,6 +29,7 @@ Server → deliver resource
 ```
 
 **Key properties:**
+
 - No intermediary custody — USDC goes directly to creator wallet
 - Price is read from the on-chain vault-registry contract
 - Settlement is atomic and final (single Soroban transaction)
@@ -42,13 +43,13 @@ Server → deliver resource
 
 **How it works:** Exactly as today. USDC goes directly to the creator's wallet upon settlement. No refund path.
 
-| Dimension          | Assessment |
-|--------------------|------------|
-| Creator trust      | ✅ Maximum — funds are immediately available |
-| Buyer safety       | ❌ None — payment is irreversible |
-| Agent automation   | ✅ Simple — no additional steps |
-| Implementation     | ✅ Already done |
-| Stellar/Soroban    | ✅ No contract changes |
+| Dimension        | Assessment                                   |
+| ---------------- | -------------------------------------------- |
+| Creator trust    | ✅ Maximum — funds are immediately available |
+| Buyer safety     | ❌ None — payment is irreversible            |
+| Agent automation | ✅ Simple — no additional steps              |
+| Implementation   | ✅ Already done                              |
+| Stellar/Soroban  | ✅ No contract changes                       |
 
 **Tradeoffs:** Works well for low-value resources where trust is established through verification scores. Breaks down when prices rise or buyers lack prior trust signals.
 
@@ -83,21 +84,23 @@ DEPOSITED → (timeout) → RELEASED
 DEPOSITED → (buyer disputes) → DISPUTED → REFUNDED | RELEASED
 ```
 
-| Dimension          | Assessment |
-|--------------------|------------|
-| Creator trust      | ⚠️ Moderate — funds delayed by dispute window |
-| Buyer safety       | ✅ Strong — can dispute within window |
-| Agent automation   | ⚠️ Agents need to handle dispute/release flows |
-| Implementation     | ❌ High — new Soroban contract, new settlement flow |
-| Stellar/Soroban    | ⚠️ Soroban persistent storage costs for escrow state; TTL management needed |
+| Dimension        | Assessment                                                                  |
+| ---------------- | --------------------------------------------------------------------------- |
+| Creator trust    | ⚠️ Moderate — funds delayed by dispute window                               |
+| Buyer safety     | ✅ Strong — can dispute within window                                       |
+| Agent automation | ⚠️ Agents need to handle dispute/release flows                              |
+| Implementation   | ❌ High — new Soroban contract, new settlement flow                         |
+| Stellar/Soroban  | ⚠️ Soroban persistent storage costs for escrow state; TTL management needed |
 
 **Stellar/Soroban constraints:**
+
 - Escrow state entries need `extend_ttl` bumps (same pattern as vault-registry)
 - USDC transfer to escrow contract requires the contract to hold a USDC trustline (SAC balance)
 - Dispute resolution requires either a trusted arbiter key or multi-sig between buyer + creator
 - Soroban's `require_auth` can enforce that only the buyer can dispute and only the creator can release early
 
 **x402 settlement implications:**
+
 - The x402 facilitator currently settles to the `payTo` address directly. Using an escrow requires either:
   1. Setting `payTo` to the escrow contract address and having the facilitator settle there, or
   2. Bypassing the x402 facilitator entirely and building a custom settlement flow
@@ -108,7 +111,7 @@ DEPOSITED → (buyer disputes) → DISPUTED → REFUNDED | RELEASED
 
 ### Option C: Server-Mediated Partial Refunds
 
-**How it works:** Payments still settle directly to the creator via x402. The MindVault server operates a **refund pool** (a platform-controlled wallet) that can issue partial refunds to buyers when a dispute is upheld.
+**How it works:** Payments still settle directly to the creator via x402. The MindBox server operates a **refund pool** (a platform-controlled wallet) that can issue partial refunds to buyers when a dispute is upheld.
 
 ```
 Buyer → pay USDC → creator (via x402, as today)
@@ -141,20 +144,22 @@ CREATE TABLE disputes (
 );
 ```
 
-| Dimension          | Assessment |
-|--------------------|------------|
-| Creator trust      | ✅ High — funds arrive immediately, refunds come from platform pool |
-| Buyer safety       | ⚠️ Moderate — depends on platform pool solvency and fair rulings |
-| Agent automation   | ✅ Simple REST API for filing/checking disputes |
-| Implementation     | ⚠️ Medium — new API routes, dispute table, refund wallet logic |
-| Stellar/Soroban    | ✅ No contract changes — refunds are separate USDC transfers |
+| Dimension        | Assessment                                                          |
+| ---------------- | ------------------------------------------------------------------- |
+| Creator trust    | ✅ High — funds arrive immediately, refunds come from platform pool |
+| Buyer safety     | ⚠️ Moderate — depends on platform pool solvency and fair rulings    |
+| Agent automation | ✅ Simple REST API for filing/checking disputes                     |
+| Implementation   | ⚠️ Medium — new API routes, dispute table, refund wallet logic      |
+| Stellar/Soroban  | ✅ No contract changes — refunds are separate USDC transfers        |
 
 **Stellar/Soroban constraints:**
+
 - Platform needs a funded wallet for refunds — operational cost
 - Refund transfers are standard USDC SAC `transfer` calls — well-understood
 - No escrow contract needed — simpler on-chain footprint
 
 **x402 settlement implications:**
+
 - Zero changes to the x402 flow — settlement is exactly as today
 - Refunds are independent transactions unrelated to the original payment
 
@@ -173,13 +178,13 @@ Server → record payment, start dispute window timer
          └─ Creator pre-approves: immediate delivery
 ```
 
-| Dimension          | Assessment |
-|--------------------|------------|
-| Creator trust      | ⚠️ Low — relies on creators honoring refund requests |
-| Buyer safety       | ⚠️ Weak — no enforcement; creator can ignore refund request |
-| Agent automation   | ⚠️ Delayed delivery complicates agent workflows |
-| Implementation     | ⚠️ Medium — timer logic, cancellation API |
-| Stellar/Soroban    | ✅ No contract changes |
+| Dimension        | Assessment                                                  |
+| ---------------- | ----------------------------------------------------------- |
+| Creator trust    | ⚠️ Low — relies on creators honoring refund requests        |
+| Buyer safety     | ⚠️ Weak — no enforcement; creator can ignore refund request |
+| Agent automation | ⚠️ Delayed delivery complicates agent workflows             |
+| Implementation   | ⚠️ Medium — timer logic, cancellation API                   |
+| Stellar/Soroban  | ✅ No contract changes                                      |
 
 **Tradeoffs:** This option is the weakest because it has no on-chain enforcement for refunds. Creators can simply not refund. It's essentially an honor system.
 
@@ -187,15 +192,15 @@ Server → record payment, start dispute window timer
 
 ## Comparison Matrix
 
-| Criterion                  | A: Status Quo | B: On-Chain Escrow | C: Partial Refunds | D: Delayed Delivery |
-|---------------------------|:---:|:---:|:---:|:---:|
-| Buyer protection          | ❌ | ✅ | ⚠️ | ❌ |
-| Creator fund availability | ✅ | ⚠️ | ✅ | ✅ |
-| Implementation complexity | ✅ | ❌ | ⚠️ | ⚠️ |
-| On-chain changes          | ✅ | ❌ | ✅ | ✅ |
-| x402 compatibility        | ✅ | ⚠️ | ✅ | ✅ |
-| Agent-friendliness        | ✅ | ⚠️ | ✅ | ⚠️ |
-| Trustlessness             | ✅ | ✅ | ❌ | ❌ |
+| Criterion                 | A: Status Quo | B: On-Chain Escrow | C: Partial Refunds | D: Delayed Delivery |
+| ------------------------- | :-----------: | :----------------: | :----------------: | :-----------------: |
+| Buyer protection          |      ❌       |         ✅         |         ⚠️         |         ❌          |
+| Creator fund availability |      ✅       |         ⚠️         |         ✅         |         ✅          |
+| Implementation complexity |      ✅       |         ❌         |         ⚠️         |         ⚠️          |
+| On-chain changes          |      ✅       |         ❌         |         ✅         |         ✅          |
+| x402 compatibility        |      ✅       |         ⚠️         |         ✅         |         ✅          |
+| Agent-friendliness        |      ✅       |         ⚠️         |         ✅         |         ⚠️          |
+| Trustlessness             |      ✅       |         ✅         |         ❌         |         ❌          |
 
 ---
 
@@ -204,16 +209,18 @@ Server → record payment, start dispute window timer
 **Short-term (next milestone): Option C — Server-Mediated Partial Refunds**
 
 This is the pragmatic choice. It:
+
 - Requires **zero changes** to the x402 payment flow or Soroban contracts
 - Gives buyers a dispute path without delaying creator payouts
 - Is fully automatable for AI agents (simple REST endpoints)
 - Can be implemented as a standalone feature in the server package
 
-The main risk — platform pool insolvency — is manageable at MindVault's current scale and can be funded from a small percentage of verification fees.
+The main risk — platform pool insolvency — is manageable at MindBox's current scale and can be funded from a small percentage of verification fees.
 
 **Medium-term (future milestone): Option B — On-Chain Escrow Contract**
 
 Once the marketplace scales and the dispute volume justifies it, migrating to an on-chain escrow provides **trustless** buyer protection. The escrow contract should be designed to:
+
 - Accept USDC deposits keyed by `(resource_id, buyer_address)`
 - Auto-release after a configurable ledger window (e.g., ~24h of ledgers)
 - Allow buyer-initiated disputes that freeze the release
@@ -228,7 +235,7 @@ Once the marketplace scales and the dispute volume justifies it, migrating to an
    - Create `POST /disputes`, `GET /disputes/:id`, `POST /disputes/:id/rule` API routes
    - Fund and configure a platform refund wallet
    - Add AI-assisted dispute review using existing OpenRouter integration
-   - Update MCP server with `mindvault_dispute` and `mindvault_dispute_status` tools
+   - Update MCP server with `mindbox_dispute` and `mindbox_dispute_status` tools
 
 2. **`feat: design vault-escrow Soroban contract (Option B)`**
    - Define escrow state machine (Deposited → Released / Disputed → Refunded)
@@ -247,7 +254,7 @@ Once the marketplace scales and the dispute volume justifies it, migrating to an
 
 - [x402 protocol spec](https://www.x402.org/)
 - [x402 payment sequence diagram](x402-sequence-diagram.md)
-- [MindVault architecture](architecture.md)
+- [MindBox architecture](architecture.md)
 - [vault-registry contract source](../contract/contracts/vault-registry/src/lib.rs)
 - [Soroban SDK — persistent storage](https://soroban.stellar.org/docs/learn/persisting-data)
 - [Stellar USDC SAC](https://stellar.expert/explorer/public/asset/USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN)

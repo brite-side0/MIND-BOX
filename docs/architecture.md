@@ -1,6 +1,6 @@
-# MindVault Architecture
+# MindBox Architecture
 
-Two distinct concerns sit at the heart of MindVault: **who gets paid and how**, and **who owns what and at what price**. x402 + USDC handles the first. The vault-registry Soroban contract handles the second. Neither depends on the other at runtime, but together they make the system both programmable and trustless.
+Two distinct concerns sit at the heart of MindBox: **who gets paid and how**, and **who owns what and at what price**. x402 + USDC handles the first. The vault-registry Soroban contract handles the second. Neither depends on the other at runtime, but together they make the system both programmable and trustless.
 
 ---
 
@@ -31,7 +31,7 @@ Two distinct concerns sit at the heart of MindVault: **who gets paid and how**, 
         │  2. Server reads price + owner from contract
         ▼
 ┌─────────────────────────────────────────────────┐
-│              MindVault Server                   │
+│              MindBox Server                   │
 │  (Express + @x402/express middleware)           │
 │                                                 │
 │  GET /resources/:id                             │
@@ -66,7 +66,7 @@ When a buyer (human or AI agent) requests a paywalled resource:
 
 3. The signed authorization entry is attached to the retry request. The server passes it to the x402 facilitator at `x402.org/facilitator`, which **verifies** the signature and **settles** the USDC transfer on-chain.
 
-4. Once the facilitator confirms settlement, the server delivers the resource. The USDC goes directly to the creator — MindVault takes no cut.
+4. Once the facilitator confirms settlement, the server delivers the resource. The USDC goes directly to the creator — MindBox takes no cut.
 
 **Key properties of this layer:**
 
@@ -80,20 +80,20 @@ When a buyer (human or AI agent) requests a paywalled resource:
 
 The vault-registry is a Soroban smart contract deployed on Stellar. It is the **single, permissionless source of truth** for:
 
-| Property | Meaning |
-|----------|---------|
-| `creator` | Stellar address that owns the resource; the only key allowed to mutate it |
-| `price` | Current access price in USDC stroops (1 USDC = 10 000 000 stroops) |
-| `metadata` | Content pointer — typically an IPFS URI or SHA-256 content hash |
-| `listed` | Whether the resource is publicly discoverable |
+| Property   | Meaning                                                                   |
+| ---------- | ------------------------------------------------------------------------- |
+| `creator`  | Stellar address that owns the resource; the only key allowed to mutate it |
+| `price`    | Current access price in USDC stroops (1 USDC = 10 000 000 stroops)        |
+| `metadata` | Content pointer — typically an IPFS URI or SHA-256 content hash           |
+| `listed`   | Whether the resource is publicly discoverable                             |
 
-Anyone can read this data directly from the Soroban RPC without going through the MindVault API. The `list(start, limit)` method returns pages of resources in insertion order, enabling a full catalog to be built from chain with no off-chain index.
+Anyone can read this data directly from the Soroban RPC without going through the MindBox API. The `list(start, limit)` method returns pages of resources in insertion order, enabling a full catalog to be built from chain with no off-chain index.
 
 Mutations (`register`, `set_price`, `update_metadata`, `transfer_ownership`, `set_listed`) all require the creator's Soroban `require_auth` signature. The server builds unsigned transactions that the creator signs client-side; the platform key never touches a creator's funds or ownership.
 
 **Key properties of this layer:**
 
-- Ownership is on-chain and enforced cryptographically — MindVault cannot reassign a resource without the creator's signature.
+- Ownership is on-chain and enforced cryptographically — MindBox cannot reassign a resource without the creator's signature.
 - The price the buyer actually pays (read from the contract at 402 time) is the canonical price, not a server-side value that could diverge silently.
 - The `metadata` field anchors content integrity: storing a content hash here lets any client verify the delivered bytes against the registry entry.
 
@@ -107,7 +107,7 @@ vault-registry (chain)
       │  server reads price + creator at 402 time
       │  server writes registration tx (creator-signed)
       │
-MindVault server
+MindBox server
       │
       │  server verifies payment via x402 facilitator
       │  server delivers content after settlement
@@ -121,7 +121,7 @@ The two on-chain components — the registry contract and the USDC SAC — are i
 
 ## Shared TypeScript client
 
-The `@mindvault/registry-client` workspace package (`packages/registry-client/`) wraps the auto-generated Soroban bindings in a single stable import. All three consumers — `server/`, `web/`, and `mcp/` — depend on `"@mindvault/registry-client": "workspace:*"`. This ensures every package uses the same generated types and the same network defaults.
+The `@mindbox/registry-client` workspace package (`packages/registry-client/`) wraps the auto-generated Soroban bindings in a single stable import. All three consumers — `server/`, `web/`, and `mcp/` — depend on `"@mindbox/registry-client": "workspace:*"`. This ensures every package uses the same generated types and the same network defaults.
 
 After the vault-registry contract is redeployed (e.g., to add the `list` method), regenerate the bindings from the repo root:
 

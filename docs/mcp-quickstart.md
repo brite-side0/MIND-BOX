@@ -2,13 +2,13 @@
 
 This walkthrough takes you from a fresh MCP install to a working agent-to-agent flow on Stellar **testnet**: one agent sets up a wallet, registers as a publisher, publishes a resource (paying for verification via x402), and a second agent browses the catalog and buys the resource.
 
-Everything below uses the tools exposed by the MindVault MCP server (`mcp/`). The server defaults to the hosted backend at `https://mindvault-hyr3.onrender.com` and the testnet vault-registry contract — no env vars required for the happy path.
+Everything below uses the tools exposed by the MindBox MCP server (`mcp/`). The server defaults to the hosted backend at `https://your-mindbox-deployment.example.com` and the testnet vault-registry contract — no env vars required for the happy path.
 
 ## Prerequisites
 
 - The MCP server is installed and registered with your client (see [README → MCP Server](../README.md#mcp-server) for `claude mcp add` / `codex mcp add` commands).
 - Your agent has network access to:
-  - `https://mindvault-hyr3.onrender.com` (vault API)
+  - `https://your-mindbox-deployment.example.com` (vault API)
   - `https://stellar-sponsored-agent-account.onrender.com` (sponsored wallet creation)
   - `https://horizon-testnet.stellar.org` (Stellar testnet Horizon)
 - Testnet USDC funding for the publisher agent — see [Funding the agent wallet](#2-funding-the-agent-wallet) below.
@@ -21,7 +21,7 @@ Call this Agent A (the publisher) and Agent B (the buyer). In practice they're t
 
 ## Agent A — Publish a resource
 
-### 1. `mindvault_setup_wallet`
+### 1. `mindbox_setup_wallet`
 
 Creates a sponsored Stellar testnet account. The sponsor covers the ~1.5 XLM reserve and USDC trustline, so the agent starts with a usable wallet at zero upfront cost.
 
@@ -45,7 +45,7 @@ The wallet has an XLM reserve and a USDC trustline but **no USDC**. To pay the v
 
 Confirm the balance landed:
 
-### 3. `mindvault_wallet_info`
+### 3. `mindbox_wallet_info`
 
 **Input:** _(none)_
 
@@ -56,9 +56,9 @@ Address: GAGENT...XYZ
 USDC Balance: 10.0000000
 ```
 
-> Troubleshooting: if `USDC Balance` is still `0`, the faucet payment hasn't settled yet — wait ~10 seconds and re-run. If it stays at `0`, the trustline may be missing; re-run `mindvault_setup_wallet` to recreate the sponsored account.
+> Troubleshooting: if `USDC Balance` is still `0`, the faucet payment hasn't settled yet — wait ~10 seconds and re-run. If it stays at `0`, the trustline may be missing; re-run `mindbox_setup_wallet` to recreate the sponsored account.
 
-### 4. `mindvault_register`
+### 4. `mindbox_register`
 
 Registers a publisher record bound to the agent's wallet. Returns an API key that the MCP server holds in memory for subsequent `publish` calls.
 
@@ -75,7 +75,7 @@ Registers a publisher record bound to the agent's wallet. Returns an API key tha
 
 **Example output:** a confirmation string with the publisher ID and a stored API key.
 
-### 5. `mindvault_publish`
+### 5. `mindbox_publish`
 
 Publishes a link resource. The MCP server signs the x402 verification payment using the agent wallet, so the publisher's USDC pays for verification.
 
@@ -92,7 +92,7 @@ Publishes a link resource. The MCP server signs the x402 verification payment us
 
 **Example output:** a confirmation with the new `resourceId`, verification status, and the paywalled `accessUrl`.
 
-> Troubleshooting: if `publish` returns an x402 verification error, the wallet is most likely under-funded. The required verification fee is small (well under $1) — re-check `mindvault_wallet_info` and re-fund if needed. For deeper x402 sign/pay debugging see [docs/x402-payment-troubleshooting.md](x402-payment-troubleshooting.md).
+> Troubleshooting: if `publish` returns an x402 verification error, the wallet is most likely under-funded. The required verification fee is small (well under $1) — re-check `mindbox_wallet_info` and re-fund if needed. For deeper x402 sign/pay debugging see [docs/x402-payment-troubleshooting.md](x402-payment-troubleshooting.md).
 
 ---
 
@@ -100,7 +100,7 @@ Publishes a link resource. The MCP server signs the x402 verification payment us
 
 Start a second MCP session (or a separate agent). It needs its own wallet and its own USDC to pay for the resource.
 
-### 6. `mindvault_setup_wallet` (Agent B)
+### 6. `mindbox_setup_wallet` (Agent B)
 
 Same as step 1 — gives Agent B its own sponsored testnet wallet.
 
@@ -108,7 +108,7 @@ Same as step 1 — gives Agent B its own sponsored testnet wallet.
 
 Same flow as step 2 — send testnet USDC to Agent B's address. The amount needs to cover the resource price plus a tiny x402 fee buffer.
 
-### 8. `mindvault_browse`
+### 8. `mindbox_browse`
 
 Lists all resources in the catalog with their IDs, titles, prices, and access URLs.
 
@@ -119,10 +119,10 @@ Lists all resources in the catalog with their IDs, titles, prices, and access UR
 ```
 [abc123] Sample weather forecast feed — $0.05 USDC
   Hourly forecast JSON for SF
-  https://mindvault-hyr3.onrender.com/r/abc123
+  https://your-mindbox-deployment.example.com/r/abc123
 ```
 
-### 9. `mindvault_search` (optional)
+### 9. `mindbox_search` (optional)
 
 Search the catalog by keyword plus filters. The MCP server forwards the filters to the backend, so the result set is narrowed before it reaches the agent.
 
@@ -143,7 +143,7 @@ Search the catalog by keyword plus filters. The MCP server forwards the filters 
 ```
 [abc123] Sample weather forecast feed — $0.05 USDC
   Hourly forecast JSON for SF
-  https://mindvault-hyr3.onrender.com/r/abc123
+  https://your-mindbox-deployment.example.com/r/abc123
 ```
 
 If no resource matches, the error message includes the applied filters, for example:
@@ -152,7 +152,7 @@ If no resource matches, the error message includes the applied filters, for exam
 No resources match query "forecast", min $0.01, max $1.00, status verified, type link.
 ```
 
-### 10. `mindvault_preview` (optional)
+### 10. `mindbox_preview` (optional)
 
 Show full metadata and verification status before paying.
 
@@ -162,7 +162,7 @@ Show full metadata and verification status before paying.
 { "resourceId": "abc123" }
 ```
 
-### 11. `mindvault_buy`
+### 11. `mindbox_buy`
 
 Pays the resource price in USDC via x402 and returns the protected content.
 
@@ -174,16 +174,16 @@ Pays the resource price in USDC via x402 and returns the protected content.
 
 **Example output:** the resource payload (link, JSON, or file body), preceded by an x402 settlement summary.
 
-> Troubleshooting: a `402 Payment Required` after `buy` means the payment didn't settle — usually insufficient USDC. Run `mindvault_wallet_info` to check the balance.
+> Troubleshooting: a `402 Payment Required` after `buy` means the payment didn't settle — usually insufficient USDC. Run `mindbox_wallet_info` to check the balance.
 
 ---
 
-### 12. `mindvault_register_onchain`
+### 12. `mindbox_register_onchain`
 
 Registers an already-published, verified resource on the vault-registry contract.
-`mindvault_publish` attempts this automatically, but if the on-chain step fails
+`mindbox_publish` attempts this automatically, but if the on-chain step fails
 the resource stays listed and purchasable while reporting
-`Retry with mindvault_register_onchain`. This tool is that retry path: it prepares
+`Retry with mindbox_register_onchain`. This tool is that retry path: it prepares
 the unsigned register transaction (owner-only), signs it with the agent wallet
 (the resource creator), submits it, and returns the registry status and tx hash.
 
@@ -219,13 +219,13 @@ Following the steps above, a single operator running two MCP sessions should be 
 
 If any step fails, the most common root causes are:
 
-| Symptom                                         | Likely cause                                      | Fix                                                          |
-| ----------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------ |
-| `USDC Balance: 0`                               | Faucet payment hasn't settled / trustline missing | Wait and re-check, or rerun `mindvault_setup_wallet`         |
-| `publish` returns an x402 verification error    | Publisher wallet under-funded                     | Re-fund and retry                                            |
-| `buy` returns `402 Payment Required`            | Buyer wallet under-funded for resource price      | Re-fund and retry                                            |
-| `Not registered. Run mindvault_register first.` | API key was lost (e.g. server restart)            | Re-run `mindvault_register` in the same session              |
-| `No wallet. Run mindvault_setup_wallet first.`  | Wallet state cleared between sessions             | The wallet is in-memory only — re-create it for each session |
+| Symptom                                       | Likely cause                                      | Fix                                                          |
+| --------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------ |
+| `USDC Balance: 0`                             | Faucet payment hasn't settled / trustline missing | Wait and re-check, or rerun `mindbox_setup_wallet`           |
+| `publish` returns an x402 verification error  | Publisher wallet under-funded                     | Re-fund and retry                                            |
+| `buy` returns `402 Payment Required`          | Buyer wallet under-funded for resource price      | Re-fund and retry                                            |
+| `Not registered. Run mindbox_register first.` | API key was lost (e.g. server restart)            | Re-run `mindbox_register` in the same session                |
+| `No wallet. Run mindbox_setup_wallet first.`  | Wallet state cleared between sessions             | The wallet is in-memory only — re-create it for each session |
 
 See also: [docs/x402-payment-troubleshooting.md](x402-payment-troubleshooting.md) for x402-specific sign/pay failures.
 

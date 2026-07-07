@@ -1,5 +1,5 @@
 #![no_std]
-//! MindVault on-chain vault registry.
+//! MindBox on-chain vault registry.
 //!
 //! Records each vault resource on Stellar: its creator, price (in USDC
 //! stroops, 7 decimals), and a metadata pointer (e.g. an IPFS URI or content

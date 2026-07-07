@@ -1,6 +1,6 @@
 # Registry-Client Binding Regeneration
 
-The `@mindvault/registry-client` package (`packages/registry-client/`) provides
+The `@mindbox/registry-client` package (`packages/registry-client/`) provides
 typed TypeScript bindings for the `vault-registry` Soroban contract. All
 consumers — `server/`, `web/`, and `mcp/` — import from this single workspace
 package instead of reaching into generated code directly.
@@ -44,11 +44,11 @@ By default the script pulls bindings from the **deployed testnet contract**
 using the contract ID hard-coded in the script. Override with environment
 variables:
 
-| Variable | Purpose | Example |
-|----------|---------|---------|
-| `CONTRACT_WASM` | Generate from a local WASM instead of the deployed contract | `CONTRACT_WASM=contract/target/wasm32v1-none/release/vault_registry.wasm` |
-| `VAULT_REGISTRY_CONTRACT_ID` | Use a different deployed contract ID | `VAULT_REGISTRY_CONTRACT_ID=CABC...` |
-| `STELLAR_NETWORK` | Target network (default `testnet`) | `STELLAR_NETWORK=mainnet` |
+| Variable                     | Purpose                                                     | Example                                                                   |
+| ---------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `CONTRACT_WASM`              | Generate from a local WASM instead of the deployed contract | `CONTRACT_WASM=contract/target/wasm32v1-none/release/vault_registry.wasm` |
+| `VAULT_REGISTRY_CONTRACT_ID` | Use a different deployed contract ID                        | `VAULT_REGISTRY_CONTRACT_ID=CABC...`                                      |
+| `STELLAR_NETWORK`            | Target network (default `testnet`)                          | `STELLAR_NETWORK=mainnet`                                                 |
 
 The `CONTRACT_WASM` approach is preferred when iterating on the contract locally
 because it does not require a deploy:
@@ -88,14 +88,14 @@ This is also run automatically as part of `pnpm build:server` and `pnpm test`.
 All three consumers declare a workspace dependency in their `package.json`:
 
 ```json
-"@mindvault/registry-client": "workspace:*"
+"@mindbox/registry-client": "workspace:*"
 ```
 
-| Consumer | Dependency declaration | Primary imports |
-|----------|----------------------|-----------------|
-| `server/` | `"@mindvault/registry-client": "workspace:*"` | `createRegistryClient`, `Client`, `Resource`, network utilities |
-| `web/` | `"@mindvault/registry-client": "workspace:*"` | `Resource` type, Stellar Explorer helpers |
-| `mcp/` | `"@mindvault/registry-client": "workspace:*"` | `createRegistryClient`, `Client`, `Resource` |
+| Consumer  | Dependency declaration                      | Primary imports                                                 |
+| --------- | ------------------------------------------- | --------------------------------------------------------------- |
+| `server/` | `"@mindbox/registry-client": "workspace:*"` | `createRegistryClient`, `Client`, `Resource`, network utilities |
+| `web/`    | `"@mindbox/registry-client": "workspace:*"` | `Resource` type, Stellar Explorer helpers                       |
+| `mcp/`    | `"@mindbox/registry-client": "workspace:*"` | `createRegistryClient`, `Client`, `Resource`                    |
 
 Because this is a pnpm workspace dependency, `pnpm install` links the package
 automatically — no publish step is needed.
@@ -105,7 +105,7 @@ automatically — no publish step is needed.
 Consumers import from the package name, never from the generated directory:
 
 ```ts
-import { createRegistryClient, type Resource } from "@mindvault/registry-client";
+import { createRegistryClient, type Resource } from "@mindbox/registry-client";
 ```
 
 The package's `src/index.ts` re-exports everything from `./generated/index.js`,

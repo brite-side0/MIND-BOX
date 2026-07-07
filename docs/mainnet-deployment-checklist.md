@@ -1,8 +1,9 @@
 # Mainnet Deployment Checklist
 
-Use this checklist when moving a MindVault deployment from Stellar testnet to mainnet.
+Use this checklist when moving a MindBox deployment from Stellar testnet to mainnet.
 
 Legend:
+
 - 🔒 Involves a secret or private key — handle with care
 - ⚠️ Irreversible or high-impact action
 - 🧪 Testnet-only — skip or remove on mainnet
@@ -93,7 +94,7 @@ Record the printed contract ID. This is your mainnet `VAULT_REGISTRY_CONTRACT_ID
 ### 3c. Regenerate TypeScript bindings
 
 ```bash
-cd /path/to/mindvault
+cd /path/to/mindbox
 VAULT_REGISTRY_CONTRACT_ID=<MAINNET_CONTRACT_ID> STELLAR_NETWORK=mainnet pnpm contract:bindings
 ```
 
@@ -119,21 +120,21 @@ DATABASE_URL=<PROD_DATABASE_URL> pnpm db:migrate
 
 Update `server/.env` (or your secrets manager / deployment environment) with mainnet values. Testnet-only values are marked 🧪.
 
-| Variable | Testnet value 🧪 | Mainnet value |
-|----------|-----------------|---------------|
-| `NETWORK` | `stellar:testnet` | `stellar:mainnet` |
-| `SOROBAN_RPC_URL` | `https://soroban-testnet.stellar.org` | `https://soroban-mainnet.stellar.org` |
-| `FACILITATOR_URL` | `https://www.x402.org/facilitator` | Confirm with x402.org — mainnet facilitator URL may differ |
-| `VAULT_REGISTRY_CONTRACT_ID` | `CDQKUIADLO5S5WEHEUTTXX2M45WAHVRU2PBEBD6ZGDKMOP5A72FJ3OD4` 🧪 | Your deployed mainnet contract ID |
-| `REGISTRY_CONTRACT_ID` | same as above 🧪 | Same as `VAULT_REGISTRY_CONTRACT_ID` |
-| `PAY_TO` | testnet platform wallet 🧪 | mainnet platform wallet address |
-| `AGENT_SECRET_KEY` | testnet agent secret 🔒🧪 | mainnet agent secret 🔒 |
-| `REGISTRY_SECRET_KEY` | testnet deployer secret 🔒🧪 | mainnet deployer secret 🔒 |
-| `BASE_URL` | `http://localhost:4021` | `https://your-production-domain.com` |
-| `DATABASE_URL` | local / testnet Supabase 🧪 | production Supabase connection string 🔒 |
-| `SUPABASE_URL` | testnet project 🧪 | production project URL |
-| `SUPABASE_SERVICE_KEY` | testnet service key 🔒🧪 | production service key 🔒 |
-| `OPENROUTER_API_KEY` | any valid key 🔒 | production key with billing 🔒 |
+| Variable                     | Testnet value 🧪                      | Mainnet value                                              |
+| ---------------------------- | ------------------------------------- | ---------------------------------------------------------- |
+| `NETWORK`                    | `stellar:testnet`                     | `stellar:mainnet`                                          |
+| `SOROBAN_RPC_URL`            | `https://soroban-testnet.stellar.org` | `https://soroban-mainnet.stellar.org`                      |
+| `FACILITATOR_URL`            | `https://www.x402.org/facilitator`    | Confirm with x402.org — mainnet facilitator URL may differ |
+| `VAULT_REGISTRY_CONTRACT_ID` | `C...` 🧪                             | Your deployed mainnet contract ID                          |
+| `REGISTRY_CONTRACT_ID`       | same as above 🧪                      | Same as `VAULT_REGISTRY_CONTRACT_ID`                       |
+| `PAY_TO`                     | testnet platform wallet 🧪            | mainnet platform wallet address                            |
+| `AGENT_SECRET_KEY`           | testnet agent secret 🔒🧪             | mainnet agent secret 🔒                                    |
+| `REGISTRY_SECRET_KEY`        | testnet deployer secret 🔒🧪          | mainnet deployer secret 🔒                                 |
+| `BASE_URL`                   | `http://localhost:4021`               | `https://your-production-domain.com`                       |
+| `DATABASE_URL`               | local / testnet Supabase 🧪           | production Supabase connection string 🔒                   |
+| `SUPABASE_URL`               | testnet project 🧪                    | production project URL                                     |
+| `SUPABASE_SERVICE_KEY`       | testnet service key 🔒🧪              | production service key 🔒                                  |
+| `OPENROUTER_API_KEY`         | any valid key 🔒                      | production key with billing 🔒                             |
 
 See [`docs/environment-variables.md`](./environment-variables.md) for full variable descriptions.
 

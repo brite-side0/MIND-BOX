@@ -31,6 +31,10 @@ module.exports = {
     "packages/registry-client/src/generated/",
     "packages/registry-client/vitest.config.*",
     "**/vitest.config.ts",
+    // Operational scripts live outside the typed tsconfig projects (matches the
+    // scope of the root `lint` script, which only covers */src). Linting them
+    // with parserOptions.project errors since no tsconfig includes them.
+    "server/scripts/",
   ],
   rules: {
     "prettier/prettier": "error",

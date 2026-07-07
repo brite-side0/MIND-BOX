@@ -5,7 +5,7 @@ import {
   listResources,
   networkPassphraseForX402,
   type Resource,
-} from "@mindvault/registry-client";
+} from "@mindbox/registry-client";
 import { config } from "../config.js";
 import { getLogger } from "../lib/logger.js";
 

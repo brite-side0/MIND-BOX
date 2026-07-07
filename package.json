@@ -1,5 +1,5 @@
 {
-  "name": "mindvault",
+  "name": "mindbox",
   "version": "1.0.0",
   "private": true,
   "description": "Payment-protected vault for digital resources on Stellar, using HTTP 402 + the x402 protocol",
@@ -8,20 +8,20 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev:server": "pnpm --filter @mindvault/server dev",
-    "dev:web": "pnpm --filter @mindvault/web dev",
-    "build:registry-client": "pnpm --filter @mindvault/registry-client build",
-    "build:server": "pnpm run build:registry-client && pnpm --filter @mindvault/server build",
-    "db:generate": "pnpm --filter @mindvault/server db:generate",
-    "db:migrate": "pnpm --filter @mindvault/server db:migrate",
-    "generate-wallet": "pnpm --filter @mindvault/server generate-wallet",
+    "dev:server": "pnpm --filter @mindbox/server dev",
+    "dev:web": "pnpm --filter @mindbox/web dev",
+    "build:registry-client": "pnpm --filter @mindbox/registry-client build",
+    "build:server": "pnpm run build:registry-client && pnpm --filter @mindbox/server build",
+    "db:generate": "pnpm --filter @mindbox/server db:generate",
+    "db:migrate": "pnpm --filter @mindbox/server db:migrate",
+    "generate-wallet": "pnpm --filter @mindbox/server generate-wallet",
     "contract:build": "stellar contract build --manifest-path contract/Cargo.toml",
     "contract:test": "cargo test --manifest-path contract/Cargo.toml",
     "contract:bindings": "node scripts/generate-bindings.mjs",
     "docs:links": "node scripts/check-doc-links.mjs",
     "lint": "pnpm exec eslint \"server/src/**/*.{ts,tsx}\" \"web/src/**/*.{ts,tsx}\" \"packages/**/*.{ts,tsx}\" \"mcp/src/**/*.{ts,tsx}\"",
     "format:check": "pnpm exec prettier --check \"server/**/*.{ts,tsx,js,json,md}\" \"web/**/*.{ts,tsx,js,json,md}\" \"packages/**/*.{ts,tsx,js,json,md}\" \"mcp/**/*.{ts,tsx,js,json,md}\"",
-    "test": "pnpm run build:registry-client && pnpm --filter @mindvault/registry-client test && pnpm --filter @mindvault/server test && pnpm --filter @mindvault/web test",
+    "test": "pnpm run build:registry-client && pnpm --filter @mindbox/registry-client test && pnpm --filter @mindbox/server test && pnpm --filter @mindbox/web test",
     "prepare": "husky"
   },
   "lint-staged": {

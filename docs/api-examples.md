@@ -1,9 +1,9 @@
 # API Examples
 
-curl examples for all core MindVault API workflows. Replace placeholder values (`<...>`) with real values.
+curl examples for all core MindBox API workflows. Replace placeholder values (`<...>`) with real values.
 
 ```
-BASE=https://mindvault-hyr3.onrender.com   # or http://localhost:4021 for local dev
+BASE=https://your-mindbox-deployment.example.com   # or http://localhost:4021 for local dev
 API_KEY=mv_...                             # from POST /publishers response
 RESOURCE_ID=swcn98besxpp6t1u8e77fqz3      # from POST /resources or GET /resources
 ```
@@ -19,7 +19,7 @@ curl -s $BASE/health
 Expected response:
 
 ```json
-{"status":"ok"}
+{ "status": "ok" }
 ```
 
 ---
@@ -34,7 +34,7 @@ curl -s -X POST $BASE/publishers \
   -d '{
     "name": "Alice Creator",
     "email": "alice@example.com",
-    "walletAddress": "GB6LGS25BCTVQSIXNCXDTRH5OHKBXFB4CPCNPOCFXCZJVLFAJNL5KHM"
+    "walletAddress": "G..."
   }' | jq .
 ```
 
@@ -45,7 +45,7 @@ Expected response (`201 Created`):
   "id": "clxyz1234",
   "name": "Alice Creator",
   "email": "alice@example.com",
-  "walletAddress": "GB6LGS25BCTVQSIXNCXDTRH5OHKBXFB4CPCNPOCFXCZJVLFAJNL5KHM",
+  "walletAddress": "G...",
   "apiKey": "mv_abc123...",
   "createdAt": "2026-06-24T13:00:00.000Z"
 }
@@ -56,7 +56,7 @@ Expected response (`201 Created`):
 ### Look up publisher by wallet address
 
 ```bash
-curl -s $BASE/publishers/wallet/GB6LGS25BCTVQSIXNCXDTRH5OHKBXFB4CPCNPOCFXCZJVLFAJNL5KHM | jq .
+curl -s $BASE/publishers/wallet/G... | jq .
 ```
 
 ### Get own profile (authenticated)
@@ -116,7 +116,7 @@ Expected response (`201 Created`):
   "verificationStatus": "pending",
   "listed": false,
   "createdAt": "2026-06-24T13:05:00.000Z",
-  "accessUrl": "https://mindvault-hyr3.onrender.com/resources/swcn98besxpp6t1u8e77fqz3"
+  "accessUrl": "https://your-mindbox-deployment.example.com/resources/swcn98besxpp6t1u8e77fqz3"
 }
 ```
 
@@ -151,22 +151,22 @@ Expected response (array):
     "id": "swcn98besxpp6t1u8e77fqz3",
     "title": "My Research Dataset",
     "price": "0.50",
-    "accessUrl": "https://mindvault-hyr3.onrender.com/resources/swcn98besxpp6t1u8e77fqz3"
+    "accessUrl": "https://your-mindbox-deployment.example.com/resources/swcn98besxpp6t1u8e77fqz3"
   }
 ]
 ```
 
 ### Searching and filtering
 
-`GET /resources` accepts optional query parameters that narrow the catalog. They can be combined; all filtering is applied **server-side** before the response is returned. (The web app's `CatalogSearch` UI and the MCP `mindvault_search` tool send these same parameters.)
+`GET /resources` accepts optional query parameters that narrow the catalog. They can be combined; all filtering is applied **server-side** before the response is returned. (The web app's `CatalogSearch` UI and the MCP `mindbox_search` tool send these same parameters.)
 
-| Parameter            | Type                                   | Effect |
-|----------------------|----------------------------------------|--------|
-| `search`             | string                                 | Case-insensitive match against resource **title or description** |
-| `minPrice`           | number string (e.g. `0.50`)            | Only resources priced ≥ `minPrice` |
-| `maxPrice`           | number string                          | Only resources priced ≤ `maxPrice` |
-| `verificationStatus` | `verified` \| `pending` \| `rejected`  | Filter by verification status |
-| `resourceType`       | `file` \| `link`                       | Filter by resource type |
+| Parameter            | Type                                  | Effect                                                           |
+| -------------------- | ------------------------------------- | ---------------------------------------------------------------- |
+| `search`             | string                                | Case-insensitive match against resource **title or description** |
+| `minPrice`           | number string (e.g. `0.50`)           | Only resources priced ≥ `minPrice`                               |
+| `maxPrice`           | number string                         | Only resources priced ≤ `maxPrice`                               |
+| `verificationStatus` | `verified` \| `pending` \| `rejected` | Filter by verification status                                    |
+| `resourceType`       | `file` \| `link`                      | Filter by resource type                                          |
 
 ```bash
 # Verified links priced between 0.10 and 1.00 USDC that mention "dataset"
@@ -202,7 +202,7 @@ Expected response:
   "resourceType": "link",
   "verificationStatus": "verified",
   "listed": true,
-  "accessUrl": "https://mindvault-hyr3.onrender.com/resources/swcn98besxpp6t1u8e77fqz3"
+  "accessUrl": "https://your-mindbox-deployment.example.com/resources/swcn98besxpp6t1u8e77fqz3"
 }
 ```
 
@@ -256,7 +256,7 @@ The `PAYMENT-REQUIRED` header is a base64-encoded JSON object containing:
   "x402Version": "1",
   "scheme": "exact",
   "network": "stellar:testnet",
-  "payTo": "GB6LGS25BCTVQSIXNCXDTRH5OHKBXFB4CPCNPOCFXCZJVLFAJNL5KHM",
+  "payTo": "G...",
   "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
   "price": "5000000"
 }
@@ -285,7 +285,9 @@ const scheme = new ExactStellarScheme(signer);
 const client = new x402Client().register("stellar:testnet", scheme);
 const paidFetch = wrapFetchWithPayment(fetch, client);
 
-const res = await paidFetch("https://mindvault-hyr3.onrender.com/resources/swcn98besxpp6t1u8e77fqz3");
+const res = await paidFetch(
+  "https://your-mindbox-deployment.example.com/resources/swcn98besxpp6t1u8e77fqz3",
+);
 const data = await res.json();
 // { url: "https://...", receipt: { paymentId, amount, currency, paidTo, paidAt } }
 ```
@@ -303,10 +305,10 @@ Expected response:
 ```json
 {
   "agent": {
-    "name": "MindVault Verification Agent",
-    "walletAddress": "GB6LGS25BCTVQSIXNCXDTRH5OHKBXFB4CPCNPOCFXCZJVLFAJNL5KHM",
+    "name": "MindBox Verification Agent",
+    "walletAddress": "G...",
     "network": "stellar:testnet",
-    "endpoint": "https://mindvault-hyr3.onrender.com/verify-content",
+    "endpoint": "https://your-mindbox-deployment.example.com/verify-content",
     "pricePerVerification": "0.10",
     "currency": "USDC",
     "status": "active"
@@ -333,5 +335,5 @@ curl -s -X DELETE $BASE/resources/$RESOURCE_ID \
 Expected response:
 
 ```json
-{"message":"Resource delisted","id":"swcn98besxpp6t1u8e77fqz3"}
+{ "message": "Resource delisted", "id": "swcn98besxpp6t1u8e77fqz3" }
 ```

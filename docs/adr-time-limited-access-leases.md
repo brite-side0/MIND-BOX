@@ -1,17 +1,17 @@
-# ADR: Time-Limited Access Leases for MindVault
+# ADR: Time-Limited Access Leases for MindBox
 
-| Field       | Value                                                        |
-| ----------- | ------------------------------------------------------------ |
-| **Status**  | Proposed                                                     |
-| **Date**    | 2026-06-25                                                   |
-| **Issue**   | [#179](https://github.com/mind-vault-1/mindvault/issues/179) |
-| **Authors** | thefifthdev                                                  |
+| Field       | Value                                                    |
+| ----------- | -------------------------------------------------------- |
+| **Status**  | Proposed                                                 |
+| **Date**    | 2026-06-25                                               |
+| **Issue**   | [#179](https://github.com/mind-box-1/mindbox/issues/179) |
+| **Authors** | thefifthdev                                              |
 
 ---
 
 ## Context
 
-MindVault charges for resource access **per request**. Every `GET /resources/:id` runs through the `dynamicPaywall` middleware (`server/src/middleware/dynamicPaywall.ts`), which returns an HTTP 402, the buyer signs a USDC authorization, and the server settles via the x402 facilitator before delivering the resource. USDC moves **directly from buyer to creator** — MindVault never custodies funds and keeps no per-buyer access state. The `README.md` "What Is Not Yet Built" list explicitly calls this out: _"Recurring access or time-limited leases (currently per-request)."_
+MindBox charges for resource access **per request**. Every `GET /resources/:id` runs through the `dynamicPaywall` middleware (`server/src/middleware/dynamicPaywall.ts`), which returns an HTTP 402, the buyer signs a USDC authorization, and the server settles via the x402 facilitator before delivering the resource. USDC moves **directly from buyer to creator** — MindBox never custodies funds and keeps no per-buyer access state. The `README.md` "What Is Not Yet Built" list explicitly calls this out: _"Recurring access or time-limited leases (currently per-request)."_
 
 This is simple and trustless, but it is a poor fit for two real usage patterns:
 
@@ -140,7 +140,7 @@ DEPOSITED → (creator revoke) → REVOKED
 | Buyer/agent UX  | ⚠️ Each lease purchase is a contract invocation                                 |
 | Revocation      | ⚠️ Possible but costs a contract write per revoke                               |
 | Implementation  | ❌ High — new contract, USDC SAC integration, TTL/expiry, tests                 |
-| Trustlessness   | ✅ Maximum — verifiable without trusting the MindVault server                   |
+| Trustlessness   | ✅ Maximum — verifiable without trusting the MindBox server                     |
 | Stellar/Soroban | ⚠️ Persistent-storage TTL management; USDC settlement into/through the contract |
 
 **Stellar/Soroban constraints:**
@@ -230,7 +230,7 @@ Rollback is trivial: disable the flag / remove lease tiers and the paywall pre-c
    - `POST /resources/:id/leases/:holder/revoke` (creator-auth) and platform revocation.
 
 4. **`feat: MCP lease tools`**
-   - Add `mindvault_buy_lease` and `mindvault_lease_status` to `mcp/src/index.ts` and the README tool table, so agents can buy windowed access.
+   - Add `mindbox_buy_lease` and `mindbox_lease_status` to `mcp/src/index.ts` and the README tool table, so agents can buy windowed access.
 
 5. **`docs: document access leases`**
    - Update `README.md` (move leases out of "What Is Not Yet Built"), `docs/api-examples.md`, and `docs/x402-sequence-diagram.md` with the lease flow.
@@ -245,7 +245,7 @@ Rollback is trivial: disable the flag / remove lease tiers and the paywall pre-c
 - [x402 protocol spec](https://www.x402.org/)
 - [x402 payment sequence diagram](x402-sequence-diagram.md)
 - [Refund and escrow ADR](adr-refund-escrow-mechanism.md)
-- [MindVault architecture](architecture.md)
+- [MindBox architecture](architecture.md)
 - [Resource publish lifecycle](resource-publish-lifecycle.md)
 - [dynamic paywall middleware](../server/src/middleware/dynamicPaywall.ts)
 - [vault-registry contract source](../contract/contracts/vault-registry/src/lib.rs)

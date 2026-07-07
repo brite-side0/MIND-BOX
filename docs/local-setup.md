@@ -1,6 +1,6 @@
 # Local Setup Guide
 
-This guide will walk you through setting up MindVault from a fresh clone to a running server and web app. MindVault uses **Stellar testnet** — no real funds are needed or at risk.
+This guide will walk you through setting up MindBox from a fresh clone to a running server and web app. MindBox uses **Stellar testnet** — no real funds are needed or at risk.
 
 ## 1. Prerequisites
 
@@ -14,8 +14,8 @@ Before you begin, ensure you have the following installed:
 ## 2. Clone and Install
 
 ```bash
-git clone https://github.com/mind-vault-1/mindvault.git
-cd mindvault
+git clone https://github.com/mind-box-1/mindbox.git
+cd mindbox
 
 # Install all JS/TS workspace packages
 pnpm install
@@ -23,7 +23,7 @@ pnpm install
 
 ## 3. Environment Variables & Supabase
 
-MindVault requires several environment variables to run.
+MindBox requires several environment variables to run.
 
 1. Copy the example file:
    ```bash
@@ -47,9 +47,10 @@ make migrate
 
 ## 5. Stellar Testnet Setup
 
-MindVault uses the Stellar testnet for all payments and the vault registry. 
+MindBox uses the Stellar testnet for all payments and the vault registry.
 
 ### A. Deploy the vault registry contract
+
 The smart contract must be deployed so the server can record resources on-chain.
 
 ```bash
@@ -65,17 +66,21 @@ stellar contract deploy \
   --source deployer \
   --network testnet
 ```
+
 Copy the printed contract ID into your `server/.env` file as **`VAULT_REGISTRY_CONTRACT_ID`** and **`REGISTRY_CONTRACT_ID`**. Also, grab your deployer secret key (using `stellar keys show deployer`) and set it as **`REGISTRY_SECRET_KEY`**.
 
 ### B. Generate Platform and Agent Wallets
+
 The system needs two separate testnet wallets: a platform wallet (receives fees) and an agent wallet (pays for verification).
 
 ```bash
 make wallets
 ```
-*Run this command twice.* Add the first pair's public key to `server/.env` as **`PAY_TO`**, and the second pair's secret key as **`AGENT_SECRET_KEY`**.
+
+_Run this command twice._ Add the first pair's public key to `server/.env` as **`PAY_TO`**, and the second pair's secret key as **`AGENT_SECRET_KEY`**.
 
 ### C. Fund Wallets and Add USDC Trustline
+
 Both wallets require testnet USDC from the Circle faucet.
 
 1. Provide your agent wallet with a USDC trustline:

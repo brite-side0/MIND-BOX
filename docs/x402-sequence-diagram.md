@@ -5,7 +5,7 @@ This diagram walks through the full x402 payment flow: from the initial resource
 ```mermaid
 sequenceDiagram
     participant Buyer as Buyer / AI Agent
-    participant Server as MindVault Server
+    participant Server as MindBox Server
     participant Facilitator as x402 Facilitator
     participant Stellar as Stellar Network (Soroban USDC SAC)
 
@@ -37,7 +37,7 @@ sequenceDiagram
     Note right of Facilitator: USDC transferred:<br/>buyer → creator wallet
     Stellar-->>Facilitator: { txHash, status: "SUCCESS" }
     Facilitator-->>Server: settlement confirmation
-    Note right of Server: USDC goes directly to creator —<br/>MindVault takes no cut
+    Note right of Server: USDC goes directly to creator —<br/>MindBox takes no cut
 
     Note over Buyer,Stellar: Step 6: Deliver resource
     Server->>Server: Record access in DB
@@ -47,20 +47,20 @@ sequenceDiagram
 
 ## Flow summary
 
-| Step | What happens | Protocol |
-|------|-------------|----------|
-| 1 | Client requests resource; server returns 402 with payment details | HTTP 402 + `PAYMENT-REQUIRED` header |
-| 2 | Client builds and signs a Soroban USDC authorization entry | Stellar Soroban auth |
-| 3 | Client retries with the signed auth entry in an `X-Payment` header | HTTP GET + `X-Payment` |
-| 4 | Server sends auth entry to x402 facilitator for signature verification | `/verify` at `x402.org/facilitator` |
-| 5 | Facilitator settles the USDC transfer on Stellar testnet | Soroban USDC SAC transfer |
-| 6 | Server delivers the resource content | HTTP 200 |
+| Step | What happens                                                           | Protocol                             |
+| ---- | ---------------------------------------------------------------------- | ------------------------------------ |
+| 1    | Client requests resource; server returns 402 with payment details      | HTTP 402 + `PAYMENT-REQUIRED` header |
+| 2    | Client builds and signs a Soroban USDC authorization entry             | Stellar Soroban auth                 |
+| 3    | Client retries with the signed auth entry in an `X-Payment` header     | HTTP GET + `X-Payment`               |
+| 4    | Server sends auth entry to x402 facilitator for signature verification | `/verify` at `x402.org/facilitator`  |
+| 5    | Facilitator settles the USDC transfer on Stellar testnet               | Soroban USDC SAC transfer            |
+| 6    | Server delivers the resource content                                   | HTTP 200                             |
 
 ## Key properties
 
 - **No accounts or OAuth** — a Stellar keypair is all a client needs
 - **Price read from chain** — the vault-registry contract is queried at request time, so price updates take effect immediately
-- **Direct settlement** — USDC goes from buyer to creator; MindVault has no access to funds
+- **Direct settlement** — USDC goes from buyer to creator; MindBox has no access to funds
 - **Stateless retry** — every request is self-contained; the server does not track sessions
 - **Auth entry expiry** — signed auth entries have a limited ledger window (minutes), so retries must happen promptly
 

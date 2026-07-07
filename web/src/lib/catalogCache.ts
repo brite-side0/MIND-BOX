@@ -1,7 +1,7 @@
 import type { CatalogFilters } from "../api/resources.js";
 import { fetchCatalog } from "../api/resources.js";
 
-const CACHE_PREFIX = "mindvault-catalog:";
+const CACHE_PREFIX = "mindbox-catalog:";
 
 export interface CatalogFetchResult {
   data: unknown[];

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * MindVault MCP Server
+ * MindBox MCP Server
  * Exposes vault tools to AI agents via the Model Context Protocol.
  */
 
@@ -13,7 +13,7 @@ import {
   validateNetworkConfig,
   X402_NETWORK_IDS,
   type Resource,
-} from "@mindvault/registry-client";
+} from "@mindbox/registry-client";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
@@ -23,6 +23,7 @@ import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
+import { signMutatingHeaders } from "./requestSignature.js";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -41,11 +42,12 @@ const networkIssues = validateNetworkConfig({
 
 if (networkIssues.length > 0) {
   const details = networkIssues.map((i) => `${i.field}: ${i.message}`).join("\n");
-  console.error(`MindVault MCP: inconsistent network configuration:\n${details}`);
+  console.error(`MindBox MCP: inconsistent network configuration:\n${details}`);
   process.exit(1);
 }
 
-const BASE_URL = process.env.MINDVAULT_URL ?? "https://mindvault-hyr3.onrender.com";
+// Defaults to a local server. Point MINDBOX_URL at your own MindBox deployment.
+const BASE_URL = process.env.MINDBOX_URL ?? "http://localhost:4021";
 const REGISTRY_CONTRACT_ID =
   process.env.VAULT_REGISTRY_CONTRACT_ID ?? networkPreset.defaultRegistryContractId ?? "";
 const REGISTRY_NETWORK_PASSPHRASE = networkPreset.networkPassphrase;
@@ -60,14 +62,14 @@ const NETWORK: X402Network = normalizeX402Network(
 
 if (!REGISTRY_CONTRACT_ID) {
   console.error(
-    "MindVault MCP: VAULT_REGISTRY_CONTRACT_ID is required for mainnet. Deploy vault-registry and set the contract ID.",
+    "MindBox MCP: VAULT_REGISTRY_CONTRACT_ID is required for mainnet. Deploy vault-registry and set the contract ID.",
   );
   process.exit(1);
 }
 
 // ── State persistence ─────────────────────────────────────────────────────────
 
-const STATE_DIR = join(homedir(), ".mindvault");
+const STATE_DIR = join(homedir(), ".mindbox");
 const STATE_FILE = join(STATE_DIR, "state.json");
 
 interface AgentWallet {
@@ -115,7 +117,7 @@ function saveState(): void {
     };
     writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), { mode: 0o600 });
   } catch (err) {
-    console.error("MindVault MCP: failed to persist state:", err);
+    console.error("MindBox MCP: failed to persist state:", err);
   }
 }
 
@@ -162,7 +164,7 @@ async function jsonFetch(
 }
 
 function requireWallet(): AgentWallet {
-  if (!agentWallet) throw new Error("No wallet. Run mindvault_setup_wallet first.");
+  if (!agentWallet) throw new Error("No wallet. Run mindbox_setup_wallet first.");
   return agentWallet;
 }
 
@@ -384,7 +386,7 @@ async function register(name: string, email: string, walletAddress?: string): Pr
   if (!res.ok) throw new Error(`Register failed: ${JSON.stringify(res.data)}`);
   agentApiKey = res.data.apiKey;
   saveState();
-  return `Registered as publisher.\nID: ${res.data.id}\nAPI key persisted to ${STATE_FILE} (not shown). Run mindvault_reset to revoke.`;
+  return `Registered as publisher.\nID: ${res.data.id}\nAPI key persisted to ${STATE_FILE} (not shown). Run mindbox_reset to revoke.`;
 }
 
 async function publish(args: {
@@ -394,7 +396,7 @@ async function publish(args: {
   externalUrl: string;
 }): Promise<string> {
   const wallet = requireWallet();
-  if (!agentApiKey) throw new Error("Not registered. Run mindvault_register first.");
+  if (!agentApiKey) throw new Error("Not registered. Run mindbox_register first.");
 
   // Step 1: Create the resource record
   const createRes = await jsonFetch(`${BASE_URL}/resources`, {
@@ -491,7 +493,7 @@ async function publish(args: {
     if (typeof data.txStatusUrl === "string") {
       failureGuidance.push(`Transaction status: ${data.txStatusUrl}`);
     } else if (onchainTxHash) {
-      failureGuidance.push(`Check transaction ${onchainTxHash} with mindvault_tx_status.`);
+      failureGuidance.push(`Check transaction ${onchainTxHash} with mindbox_tx_status.`);
     }
     if (Array.isArray(data.nextSteps)) {
       failureGuidance.push("Next steps:", ...data.nextSteps.map((s: string) => `  - ${s}`));
@@ -538,7 +540,7 @@ export async function buy(resourceId: string): Promise<string> {
 /**
  * Register a verified resource on the vault registry contract.
  *
- * mindvault_publish triggers on-chain registration automatically, but the chain
+ * mindbox_publish triggers on-chain registration automatically, but the chain
  * call can fail (RPC outage, unfunded fees) while the resource stays listed and
  * purchasable. This tool is the advertised retry path: it prepares the unsigned
  * register transaction (owner-only), signs it with the agent wallet — which is
@@ -546,7 +548,7 @@ export async function buy(resourceId: string): Promise<string> {
  */
 export async function registerOnchain(resourceId: string): Promise<string> {
   const wallet = requireWallet();
-  if (!agentApiKey) throw new Error("Not registered. Run mindvault_register first.");
+  if (!agentApiKey) throw new Error("Not registered. Run mindbox_register first.");
   if (!resourceId) throw new Error("resourceId is required.");
 
   // Step 1: prepare the unsigned register transaction (owner-only).
@@ -604,7 +606,7 @@ export async function registerOnchain(resourceId: string): Promise<string> {
       [
         `On-chain registration failed for "${resourceId}" [${submit.status}].`,
         `Reason: ${detail}`,
-        txHash ? `Tx hash: ${txHash} (check with mindvault_tx_status)` : null,
+        txHash ? `Tx hash: ${txHash} (check with mindbox_tx_status)` : null,
         "The resource remains listed and purchasable. Ensure the agent wallet is funded for fees and retry.",
       ]
         .filter(Boolean)
@@ -725,30 +727,30 @@ function registryInfo(): string {
 
 // ── MCP Server ────────────────────────────────────────────────────────────────
 
-const server = new Server({ name: "mindvault", version: "1.0.0" }, { capabilities: { tools: {} } });
+const server = new Server({ name: "mindbox", version: "1.0.0" }, { capabilities: { tools: {} } });
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
-      name: "mindvault_setup_wallet",
+      name: "mindbox_setup_wallet",
       description:
-        "Create a Stellar wallet using the sponsored account protocol. The wallet (public key + secret key) is persisted to ~/.mindvault/state.json (mode 0600) and reloaded automatically on restart.",
+        "Create a Stellar wallet using the sponsored account protocol. The wallet (public key + secret key) is persisted to ~/.mindbox/state.json (mode 0600) and reloaded automatically on restart.",
       inputSchema: { type: "object", properties: {}, required: [] },
     },
     {
-      name: "mindvault_wallet_info",
+      name: "mindbox_wallet_info",
       description: "Check the agent wallet address and USDC balance.",
       inputSchema: { type: "object", properties: {}, required: [] },
     },
     {
-      name: "mindvault_browse",
-      description: "List all available resources in the MindVault catalog.",
+      name: "mindbox_browse",
+      description: "List all available resources in the MindBox catalog.",
       inputSchema: { type: "object", properties: {}, required: [] },
     },
     {
-      name: "mindvault_search",
+      name: "mindbox_search",
       description:
-        "Search the MindVault catalog by keyword and optional filters for price, resource type, and verification status. Uses server-side filtering and returns compact resource summaries.",
+        "Search the MindBox catalog by keyword and optional filters for price, resource type, and verification status. Uses server-side filtering and returns compact resource summaries.",
       inputSchema: {
         type: "object",
         properties: {
@@ -773,7 +775,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "mindvault_preview",
+      name: "mindbox_preview",
       description: "Get details and price for a specific resource.",
       inputSchema: {
         type: "object",
@@ -782,9 +784,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "mindvault_register",
+      name: "mindbox_register",
       description:
-        "Register as a publisher using the agent wallet. The API key is persisted to ~/.mindvault/state.json (mode 0600, key not shown in output) and reloaded on restart so mindvault_publish works across sessions.",
+        "Register as a publisher using the agent wallet. The API key is persisted to ~/.mindbox/state.json (mode 0600, key not shown in output) and reloaded on restart so mindbox_publish works across sessions.",
       inputSchema: {
         type: "object",
         properties: {
@@ -796,7 +798,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "mindvault_publish",
+      name: "mindbox_publish",
       description:
         "Publish a link resource. Agent wallet signs the x402 verification payment on-chain.",
       inputSchema: {
@@ -811,7 +813,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "mindvault_buy",
+      name: "mindbox_buy",
       description: "Pay USDC via x402 and access a resource.",
       inputSchema: {
         type: "object",
@@ -820,35 +822,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "mindvault_register_onchain",
+      name: "mindbox_register_onchain",
       description:
-        "Register an already-published, verified resource on the vault registry contract. Use this to retry on-chain registration after mindvault_publish reports the on-chain step failed. Prepares the unsigned transaction, signs it with the agent wallet, submits it, and returns the registry status and on-chain tx hash.",
+        "Register an already-published, verified resource on the vault registry contract. Use this to retry on-chain registration after mindbox_publish reports the on-chain step failed. Prepares the unsigned transaction, signs it with the agent wallet, submits it, and returns the registry status and on-chain tx hash.",
       inputSchema: {
         type: "object",
         properties: {
           resourceId: {
             type: "string",
-            description: "The id of the resource to register on-chain (from mindvault_publish).",
+            description: "The id of the resource to register on-chain (from mindbox_publish).",
           },
         },
         required: ["resourceId"],
       },
     },
     {
-      name: "mindvault_agent_status",
+      name: "mindbox_agent_status",
       description: "Check the verification agent's earnings and activity.",
       inputSchema: { type: "object", properties: {}, required: [] },
     },
     {
-      name: "mindvault_registry_info",
+      name: "mindbox_registry_info",
       description:
-        "Return the on-chain vault-registry contract ID and network so you can query ownership, price, and listing state directly from Stellar without trusting the MindVault API.",
+        "Return the on-chain vault-registry contract ID and network so you can query ownership, price, and listing state directly from Stellar without trusting the MindBox API.",
       inputSchema: { type: "object", properties: {}, required: [] },
     },
     {
-      name: "mindvault_registry_lookup",
+      name: "mindbox_registry_lookup",
       description:
-        "Look up a resource directly from the on-chain vault registry by its ID. Returns creator, price (USDC), metadata, listed state, tags, contract ID, and network. Data comes from Stellar/Soroban, not the MindVault API. Returns an actionable message when the resource is not registered on-chain.",
+        "Look up a resource directly from the on-chain vault registry by its ID. Returns creator, price (USDC), metadata, listed state, tags, contract ID, and network. Data comes from Stellar/Soroban, not the MindBox API. Returns an actionable message when the resource is not registered on-chain.",
       inputSchema: {
         type: "object",
         properties: {
@@ -861,7 +863,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "mindvault_tx_status",
+      name: "mindbox_tx_status",
       description:
         "Look up the status of a Stellar transaction by hash via Soroban RPC. Returns SUCCESS, FAILED, or NOT_FOUND along with ledger details and XDR.",
       inputSchema: {
@@ -871,9 +873,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "mindvault_reset",
+      name: "mindbox_reset",
       description:
-        "Clear the persisted wallet and publisher API key from both memory and disk (~/.mindvault/state.json). Use this to revoke credentials or start fresh. After reset, run mindvault_setup_wallet and mindvault_register again.",
+        "Clear the persisted wallet and publisher API key from both memory and disk (~/.mindbox/state.json). Use this to revoke credentials or start fresh. After reset, run mindbox_setup_wallet and mindbox_register again.",
       inputSchema: { type: "object", properties: {}, required: [] },
     },
   ],
@@ -884,16 +886,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     let result: string;
     switch (name) {
-      case "mindvault_setup_wallet":
+      case "mindbox_setup_wallet":
         result = await setupWallet();
         break;
-      case "mindvault_wallet_info":
+      case "mindbox_wallet_info":
         result = await walletInfo();
         break;
-      case "mindvault_browse":
+      case "mindbox_browse":
         result = await browse();
         break;
-      case "mindvault_search": {
+      case "mindbox_search": {
         const filters = normalizeSearchFilters(args);
         if (!filters) {
           result = "Provide a non-empty search query.";
@@ -902,17 +904,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         break;
       }
-      case "mindvault_preview":
+      case "mindbox_preview":
         result = await preview(args.resourceId as string);
         break;
-      case "mindvault_register":
+      case "mindbox_register":
         result = await register(
           args.name as string,
           args.email as string,
           args.walletAddress as string | undefined,
         );
         break;
-      case "mindvault_publish":
+      case "mindbox_publish":
         result = await publish({
           title: args.title as string,
           description: args.description as string | undefined,
@@ -920,25 +922,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           externalUrl: args.externalUrl as string,
         });
         break;
-      case "mindvault_buy":
+      case "mindbox_buy":
         result = await buy(args.resourceId as string);
         break;
-      case "mindvault_register_onchain":
+      case "mindbox_register_onchain":
         result = await registerOnchain(args.resourceId as string);
         break;
-      case "mindvault_agent_status":
+      case "mindbox_agent_status":
         result = await agentStatus();
         break;
-      case "mindvault_registry_info":
+      case "mindbox_registry_info":
         result = registryInfo();
         break;
-      case "mindvault_registry_lookup":
+      case "mindbox_registry_lookup":
         result = await registryLookup(args.resourceId as string);
         break;
-      case "mindvault_tx_status":
+      case "mindbox_tx_status":
         result = await txStatus(args.txHash as string);
         break;
-      case "mindvault_reset":
+      case "mindbox_reset":
         result = resetState();
         break;
       default:

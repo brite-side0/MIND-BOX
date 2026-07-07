@@ -1,6 +1,6 @@
 # Resource Publish Lifecycle
 
-This guide documents the current MindVault resource lifecycle from the first publisher API call through verification, listing, on-chain registration, x402 purchase, and buyer receipt handling.
+This guide documents the current MindBox resource lifecycle from the first publisher API call through verification, listing, on-chain registration, x402 purchase, and buyer receipt handling.
 
 It is written for both web contributors and MCP contributors, and it uses the same state names the server stores in the database and returns from the API.
 
@@ -8,11 +8,11 @@ It is written for both web contributors and MCP contributors, and it uses the sa
 
 Three fields define the lifecycle:
 
-| Field | Values | Meaning |
-| --- | --- | --- |
-| `verificationStatus` | `pending`, `verified`, `rejected`, `skipped` | Off-chain content review state. New resources start at `pending`. |
-| `listed` | `true`, `false` | Whether the resource is in the public catalog and can be discovered from `GET /resources`. |
-| `onchainStatus` | `none`, `pending`, `registered`, `failed` | Soroban registry registration state. New resources start at `none`. |
+| Field                | Values                                       | Meaning                                                                                    |
+| -------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `verificationStatus` | `pending`, `verified`, `rejected`, `skipped` | Off-chain content review state. New resources start at `pending`.                          |
+| `listed`             | `true`, `false`                              | Whether the resource is in the public catalog and can be discovered from `GET /resources`. |
+| `onchainStatus`      | `none`, `pending`, `registered`, `failed`    | Soroban registry registration state. New resources start at `none`.                        |
 
 Notes:
 
@@ -48,12 +48,12 @@ Two creation paths exist in the service layer:
 
 Immediately after a successful create, the resource state is:
 
-| Field | Value |
-| --- | --- |
-| `resourceType` | `file` or `link` |
-| `verificationStatus` | `pending` |
-| `listed` | `false` |
-| `onchainStatus` | `none` |
+| Field                | Value            |
+| -------------------- | ---------------- |
+| `resourceType`       | `file` or `link` |
+| `verificationStatus` | `pending`        |
+| `listed`             | `false`          |
+| `onchainStatus`      | `none`           |
 
 The response also includes the paywalled `accessUrl`.
 
@@ -155,7 +155,7 @@ Important detail: the prepare endpoint is a `GET` in the current API and does no
 
 ### MCP flow
 
-The current `mindvault_publish` tool does three steps in order:
+The current `mindbox_publish` tool does three steps in order:
 
 1. create the resource
 2. pay for verification
@@ -257,15 +257,15 @@ Delivery differs by resource type:
 
 ## 7. State snapshots
 
-| Lifecycle point | `verificationStatus` | `listed` | `onchainStatus` |
-| --- | --- | --- | --- |
-| just created | `pending` | `false` | `none` |
-| verification accepted | `verified` | `true` | `none` |
-| verification rejected | `rejected` | `false` | `none` |
-| registration submitted | `verified` | `true` | `pending` |
-| registration confirmed | `verified` | `true` | `registered` |
-| registration failed | `verified` | `true` | `failed` |
-| owner delisted resource | unchanged | `false` | unchanged |
+| Lifecycle point         | `verificationStatus` | `listed` | `onchainStatus` |
+| ----------------------- | -------------------- | -------- | --------------- |
+| just created            | `pending`            | `false`  | `none`          |
+| verification accepted   | `verified`           | `true`   | `none`          |
+| verification rejected   | `rejected`           | `false`  | `none`          |
+| registration submitted  | `verified`           | `true`   | `pending`       |
+| registration confirmed  | `verified`           | `true`   | `registered`    |
+| registration failed     | `verified`           | `true`   | `failed`        |
+| owner delisted resource | unchanged            | `false`  | unchanged       |
 
 ## 8. Contributor takeaways
 
@@ -277,7 +277,7 @@ For web contributors:
 
 For MCP contributors:
 
-- `mindvault_publish` is a convenience wrapper around create -> verify -> best-effort register
+- `mindbox_publish` is a convenience wrapper around create -> verify -> best-effort register
 - the current MCP tool list does not expose a first-class registration retry tool
 - if registration fails, contributors should expect a resource that may be verified and listed but still blocked at purchase time by the current paywall behavior
 

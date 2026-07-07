@@ -1,6 +1,6 @@
 # Reconciliation
 
-Detects and reports discrepancies between the MindVault database and the
+Detects and reports discrepancies between the MindBox database and the
 on-chain Stellar registry.
 
 ## What reconciliation checks
@@ -78,10 +78,10 @@ pnpm tsx scripts/reconcile.ts
 pnpm reconcile -- --json
 ```
 
-| Flag     | Description                                            |
-|----------|--------------------------------------------------------|
-| `--json` | Print the typed summary as a single JSON object on     |
-|          | stdout instead of the formatted text report.           |
+| Flag     | Description                                        |
+| -------- | -------------------------------------------------- |
+| `--json` | Print the typed summary as a single JSON object on |
+|          | stdout instead of the formatted text report.       |
 
 ## Understanding the output
 
@@ -96,7 +96,7 @@ Checking missing001 ... MISSING ON-CHAIN
 Checking clx5n8z00aaaabbbbcccc ... OK
 ...
 ========================================
-MindVault Reconciliation Summary
+MindBox Reconciliation Summary
 Run at: 2026-05-28T10:32:00.000Z
 Resources checked:      42
 In sync:                39
@@ -154,7 +154,7 @@ followed by `Result: ALL CLEAR`:
 
 ```
 ========================================
-MindVault Reconciliation Summary
+MindBox Reconciliation Summary
 Run at: 2026-05-28T10:32:00.000Z
 Resources checked:      42
 In sync:                42
@@ -167,11 +167,11 @@ Result: ALL CLEAR
 
 ## Exit codes
 
-| Code | Meaning                                          |
-|------|--------------------------------------------------|
-| `0`  | All registered resources are in sync             |
-| `1`  | One or more discrepancies were found             |
-| `2`  | Script failed to run (config or network error)   |
+| Code | Meaning                                        |
+| ---- | ---------------------------------------------- |
+| `0`  | All registered resources are in sync           |
+| `1`  | One or more discrepancies were found           |
+| `2`  | Script failed to run (config or network error) |
 
 The non-zero exit on discrepancy makes the script safe to wire into a CI job
 or a scheduled health check — see [Running in CI](#running-in-ci).
@@ -210,7 +210,7 @@ on.
 name: Reconciliation check
 on:
   schedule:
-    - cron: '0 6 * * *'   # daily at 06:00 UTC
+    - cron: "0 6 * * *" # daily at 06:00 UTC
   workflow_dispatch:
 jobs:
   reconcile:

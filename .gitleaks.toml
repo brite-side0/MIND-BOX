@@ -1,4 +1,4 @@
-title = "MindVault gitleaks config"
+title = "MindBox gitleaks config"
 
 [extend]
 useDefault = true

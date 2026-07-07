@@ -1,6 +1,6 @@
 # Issue & PR Labels
 
-MindVault uses a small, consistent label taxonomy so contributors and
+MindBox uses a small, consistent label taxonomy so contributors and
 maintainers can triage at a glance and so open-source contributor **waves** can
 be tracked together.
 
@@ -16,12 +16,12 @@ Actions tab with **prune** enabled.
 Every triaged issue gets one label from each of the first three families, plus
 an optional wave:
 
-| Family         | How many        | Purpose                                   |
-| -------------- | --------------- | ----------------------------------------- |
-| `area:`        | exactly one     | Which part of the codebase                |
-| `type:`        | exactly one     | What kind of change                       |
-| `difficulty:`  | exactly one     | Expected effort / experience needed       |
-| `wave:`        | zero or one     | Which contributor cohort it belongs to    |
+| Family        | How many    | Purpose                                |
+| ------------- | ----------- | -------------------------------------- |
+| `area:`       | exactly one | Which part of the codebase             |
+| `type:`       | exactly one | What kind of change                    |
+| `difficulty:` | exactly one | Expected effort / experience needed    |
+| `wave:`       | zero or one | Which contributor cohort it belongs to |
 
 ### Area
 
@@ -32,7 +32,7 @@ client package.
 - `area: web` — React web app (`web/`)
 - `area: contract` — Soroban vault-registry contract (`contract/`)
 - `area: mcp` — MCP server for AI agents (`mcp/`)
-- `area: registry-client` — shared `@mindvault/registry-client` package
+- `area: registry-client` — shared `@mindbox/registry-client` package
   (`packages/registry-client/`)
 - `area: docs` — documentation, README, guides (`docs/`)
 - `area: ci` — CI workflows, tooling, repo config (`.github/`, `scripts/`)
@@ -100,12 +100,12 @@ The following stock GitHub labels were **ambiguous or duplicated** by the new
 taxonomy and should be removed (run **Sync labels** with prune enabled, which
 drops any label not in `labels.yml`):
 
-| Old default     | Replaced by                                   |
-| --------------- | --------------------------------------------- |
-| `bug`           | `type: bug`                                   |
-| `enhancement`   | `type: feature`                               |
-| `documentation` | `type: docs` (+ `area: docs`)                 |
-| `invalid`       | `wontfix` or close as not-planned             |
+| Old default     | Replaced by                       |
+| --------------- | --------------------------------- |
+| `bug`           | `type: bug`                       |
+| `enhancement`   | `type: feature`                   |
+| `documentation` | `type: docs` (+ `area: docs`)     |
+| `invalid`       | `wontfix` or close as not-planned |
 
 Issue templates still apply the stock labels (`bug`, `enhancement`,
 `documentation`) on creation; a triager swaps them for the prefixed `type:`

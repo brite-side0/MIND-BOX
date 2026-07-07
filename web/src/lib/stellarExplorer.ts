@@ -1,4 +1,4 @@
-import { networks, type ExplorerNetwork } from "@mindvault/registry-client";
+import { networks, type ExplorerNetwork } from "@mindbox/registry-client";
 
 export type StellarNetwork = ExplorerNetwork;
 

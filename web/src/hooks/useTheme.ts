@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 export type Theme = "light" | "dark";
 
-const STORAGE_KEY = "mindvault-theme";
+const STORAGE_KEY = "mindbox-theme";
 
 function getInitialTheme(): Theme {
   const stored = localStorage.getItem(STORAGE_KEY);

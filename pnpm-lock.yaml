@@ -61,7 +61,7 @@ importers:
 
   mcp:
     dependencies:
-      '@mindvault/registry-client':
+      '@mindbox/registry-client':
         specifier: workspace:*
         version: link:../packages/registry-client
       '@modelcontextprotocol/sdk':
@@ -114,7 +114,7 @@ importers:
 
   server:
     dependencies:
-      '@mindvault/registry-client':
+      '@mindbox/registry-client':
         specifier: workspace:*
         version: link:../packages/registry-client
       '@opentelemetry/api':
@@ -247,7 +247,7 @@ importers:
 
   web:
     dependencies:
-      '@mindvault/registry-client':
+      '@mindbox/registry-client':
         specifier: workspace:*
         version: link:../packages/registry-client
       '@sentry/react':

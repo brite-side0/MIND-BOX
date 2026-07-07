@@ -41,7 +41,7 @@ describe("App catalog empty states", () => {
     expect(await screen.findByText("The catalog is empty")).toBeInTheDocument();
     expect(screen.getByText(/No resources have been published yet/)).toBeInTheDocument();
     const cta = screen.getByRole("link", { name: /Publish a resource/ });
-    expect(cta).toHaveAttribute("href", "https://docs.mindvault.app/publishing");
+    expect(cta).toHaveAttribute("href", "https://docs.mindbox.app/publishing");
   });
 
   it("shows the no-matches state when filters exclude every resource", async () => {
