@@ -88,8 +88,7 @@ export function detectContentType(buffer: Buffer): string | null {
 }
 
 export type UploadValidationResult =
-  | { ok: true; contentType: string }
-  | { ok: false; status: 415; error: string };
+  { ok: true; contentType: string } | { ok: false; status: 415; error: string };
 
 /**
  * Validate an uploaded file against the allowlist and verify its declared type

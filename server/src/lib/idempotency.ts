@@ -15,8 +15,7 @@ export interface IdempotentResult {
 }
 
 export type IdempotencyRecord =
-  | { inProgress: true }
-  | { inProgress: false; result: IdempotentResult };
+  { inProgress: true } | { inProgress: false; result: IdempotentResult };
 
 // Keys are scoped per publisher so one publisher's key can't collide with or
 // read another's result.
