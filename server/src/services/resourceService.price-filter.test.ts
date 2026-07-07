@@ -85,6 +85,20 @@ describe("listCatalog price-range filtering (#159)", () => {
   });
 
   it("combines price range with a search term", async () => {
+    // Full-text search now runs in Postgres (migration 0008), so the DB returns
+    // only the tsvector-matched rows; the price range is still applied in-memory
+    // on top. We simulate the DB's FTS result for "stellar" here — one match in
+    // range and one out of range — to assert the price bound still narrows it.
+    currentRows = [
+      { id: "mid", title: "Middle Stellar", description: "x", price: "1.00", resourceType: "link" },
+      {
+        id: "stellarPricey",
+        title: "Stellar Deluxe",
+        description: "x",
+        price: "9.00",
+        resourceType: "file",
+      },
+    ];
     const rows = await listCatalog({ minPrice: "0.50", maxPrice: "5.00", search: "stellar" });
     expect(rows.map((r) => r.id)).toEqual(["mid"]);
   });
