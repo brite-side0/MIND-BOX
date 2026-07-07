@@ -1,4 +1,12 @@
-import { Keypair, TransactionBuilder } from "@stellar/stellar-sdk";
+import {
+  Keypair,
+  TransactionBuilder,
+  Contract,
+  Address,
+  nativeToScVal,
+  BASE_FEE,
+  rpc,
+} from "@stellar/stellar-sdk";
 import {
   Client,
   Errors,
@@ -287,5 +295,56 @@ export async function submitSignedTx(signedXdr: string): Promise<{
       success: false,
       error: error instanceof Error ? error.message : "Unknown error occurred",
     };
+  }
+}
+
+/**
+ * Sign and submit a USDC SAC `transfer` call from a platform-controlled
+ * wallet to `toAddress`. Used by refundService to execute upheld disputes
+ * (ADR: adr-refund-escrow-mechanism.md, Option C). Builds + simulates +
+ * prepares the Soroban invocation via `rpc.Server`, signs with the given
+ * secret key, then reuses `submitSignedTx` for broadcast/polling — the same
+ * submission path the on-chain register/delist flows use.
+ *
+ * Kept as a single exported function so callers (refundService) can mock it
+ * wholesale in tests instead of mocking fetch/network.
+ */
+export async function submitUsdcTransfer(params: {
+  fromSecret: string;
+  toAddress: string;
+  amountStroops: bigint;
+}): Promise<{ txHash: string; success: boolean; error?: string }> {
+  try {
+    const sourceKeypair = Keypair.fromSecret(params.fromSecret);
+    const server = new rpc.Server(config.SOROBAN_RPC_URL);
+    const account = await server.getAccount(sourceKeypair.publicKey());
+    const usdcContract = new Contract(config.USDC_CONTRACT_ID);
+
+    const operation = usdcContract.call(
+      "transfer",
+      Address.fromString(sourceKeypair.publicKey()).toScVal(),
+      Address.fromString(params.toAddress).toScVal(),
+      nativeToScVal(params.amountStroops, { type: "i128" }),
+    );
+
+    const builtTx = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(operation)
+      .setTimeout(30)
+      .build();
+
+    const prepared = await server.prepareTransaction(builtTx);
+    prepared.sign(sourceKeypair);
+
+    return await submitSignedTx(prepared.toXDR());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    getLogger().error(
+      { event: "refund_transfer_failed", toAddress: params.toAddress, error: message },
+      "USDC refund transfer failed",
+    );
+    return { txHash: "", success: false, error: message };
   }
 }
