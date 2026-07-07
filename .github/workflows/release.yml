@@ -5,20 +5,21 @@ on:
     branches:
       - main
 
+# release-please opens/updates a release PR, so it needs PR write access in
+# addition to contents. The repo setting "Allow GitHub Actions to create and
+# approve pull requests" (Settings -> Actions -> General) must also be enabled.
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: google-github-actions/release-please-action@v4
+      # googleapis/release-please-action is the maintained home of the action
+      # (google-github-actions/release-please-action is deprecated). v4 does
+      # not accept package-name/extra-files inputs; component naming comes
+      # from include-component-in-tag and monorepo manifests if needed.
+      - uses: googleapis/release-please-action@v4
         with:
           release-type: node
-          package-name: mindbox
-          extra-files: |
-            package.json
-            server/package.json
-            web/package.json
-            mcp/package.json
-            packages/registry-client/package.json
