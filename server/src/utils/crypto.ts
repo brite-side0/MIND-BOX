@@ -8,6 +8,20 @@ export function hashApiKey(key: string): string {
   return createHash("sha256").update(key).digest("hex");
 }
 
+/**
+ * Opaque access-lease token (ADR: Time-Limited Access Leases). Mirrors the
+ * API-key pattern: generate a random plaintext token, return it to the buyer
+ * exactly once at purchase, and persist only its sha256 hash. The client later
+ * presents the plaintext via `Authorization: Lease <token>` on reads.
+ */
+export function generateLeaseToken(): string {
+  return `lease_${randomBytes(32).toString("hex")}`;
+}
+
+export function hashLeaseToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 export function hashContentUrl(url: string): string {
   return createHash("sha256").update(url).digest("hex");
 }

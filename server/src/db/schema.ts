@@ -137,3 +137,37 @@ export const payments = pgTable(
     payerAddressIdx: index("idx_payments_payer_address").on(table.payerAddress),
   }),
 );
+
+// Leases — time-limited access entitlements (ADR: Time-Limited Access Leases,
+// Option A off-chain lease table). A lease says "holder_address may access
+// resource_id until expires_at". The server is authoritative: the paywall
+// checks for an active, non-revoked lease before issuing a 402 (migration 0009).
+//
+// Read-time identity uses an opaque lease token (returned once at purchase);
+// only its sha256 hash is stored here — never the plaintext (see utils/crypto).
+export const leases = pgTable(
+  "leases",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    resourceId: text("resource_id")
+      .notNull()
+      .references(() => resources.id),
+    holderAddress: text("holder_address").notNull(),
+    // sha256 of the opaque lease token — the plaintext is shown once at purchase.
+    tokenHash: text("token_hash").notNull(),
+    amount: text("amount").notNull(), // USDC amount paid for the window
+    paymentTx: text("payment_tx"), // settlement reference, when available
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => ({
+    // Leases are looked up per resource + holder (ADR sketch index).
+    resourceHolderIdx: index("idx_leases_resource_holder").on(
+      table.resourceId,
+      table.holderAddress,
+    ),
+  }),
+);
