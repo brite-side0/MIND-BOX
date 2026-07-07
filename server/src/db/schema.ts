@@ -171,3 +171,39 @@ export const leases = pgTable(
     ),
   }),
 );
+
+// Disputes — buyer-filed refund disputes (ADR: adr-refund-escrow-mechanism.md,
+// Option C: Server-Mediated Partial Refunds). Payments still settle directly
+// buyer -> creator via x402; a dispute is a claim against the platform-run
+// refund pool wallet, not against the original payment. `status` starts
+// 'pending' and resolves to 'upheld' (refund issued, best-effort) or 'denied'.
+// See services/disputeService.ts and services/refundService.ts.
+export const disputes = pgTable(
+  "disputes",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    resourceId: text("resource_id")
+      .notNull()
+      .references(() => resources.id),
+    buyerAddress: text("buyer_address").notNull(),
+    amount: text("amount").notNull(), // USDC amount claimed
+    reason: text("reason").notNull(),
+    // pending | upheld | denied
+    status: text("status").notNull().default("pending"),
+    // Refund transfer tx hash, when a refund was actually executed on-chain.
+    // Null while pending, and also null when a dispute is upheld but refund
+    // execution was disabled (no REFUND_WALLET_SECRET configured).
+    refundTx: text("refund_tx"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (table) => ({
+    // Duplicate-open-dispute checks and buyer dispute history are looked up
+    // per resource + buyer.
+    resourceBuyerIdx: index("idx_disputes_resource_buyer").on(table.resourceId, table.buyerAddress),
+    // Admin/ops dashboards filter open disputes by status.
+    statusIdx: index("idx_disputes_status").on(table.status),
+  }),
+);

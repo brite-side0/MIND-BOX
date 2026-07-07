@@ -59,6 +59,25 @@ const envSchema = z.object({
   // Bearer auth or ?token=. If unset, the endpoint is disabled.
   METRICS_TOKEN: z.string().optional(),
 
+  // Admin token gating POST /disputes/:id/rule (Bearer auth or ?token=, same
+  // pattern as METRICS_TOKEN). Kept separate from METRICS_TOKEN on purpose —
+  // dispute rulings move platform refund-pool funds, so they get their own
+  // credential rather than reusing an observability token. If unset, the
+  // ruling endpoint is disabled (returns 404), same convention as /metrics.
+  ADMIN_TOKEN: z.string().optional(),
+
+  // Platform refund-pool wallet (ADR: adr-refund-escrow-mechanism.md, Option
+  // C). Secret key of the platform-controlled wallet that issues USDC refunds
+  // to buyers when a dispute is upheld. Optional: if unset, dispute rulings
+  // are still recorded, but refund EXECUTION is skipped — see
+  // services/refundService.ts. This keeps the scaffold runnable without a
+  // funded wallet.
+  REFUND_WALLET_SECRET: z.string().optional(),
+  // Policy cap on a single refund payout (USDC decimal string). Refunds are
+  // capped to min(disputeAmount, REFUND_MAX_AMOUNT). Unset means no cap
+  // (refund the full disputed amount).
+  REFUND_MAX_AMOUNT: z.string().optional(),
+
   // Sentry error tracking — when DSN is set, unhandled errors are reported.
   SENTRY_DSN: z.string().url().optional(),
 
