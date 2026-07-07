@@ -66,6 +66,20 @@ export const transferOwnershipSchema = z
   })
   .strict();
 
+/** Duration tiers offered when purchasing an access lease (ADR: Time-Limited
+ * Access Leases). Kept in sync with leaseService.DURATION_TIERS. */
+export const leaseDurationTiers = ["1h", "24h", "7d"] as const;
+
+/** Body for POST /resources/:id/leases — purchase a time-limited lease. */
+export const purchaseLeaseSchema = z
+  .object({
+    durationTier: z.enum(leaseDurationTiers),
+    // The Stellar address that will hold the lease. Optional: when omitted, the
+    // route derives the holder from the settled x402 payment (payer address).
+    holderAddress: z.string().min(1).optional(),
+  })
+  .strict();
+
 /** Sort values supported by GET /resources (#163). */
 export const catalogSortValues = ["newest", "price_asc", "price_desc", "title"] as const;
 
