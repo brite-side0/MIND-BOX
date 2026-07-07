@@ -44,6 +44,7 @@ import {
   submitSignedTx,
 } from "../services/registryClient.js";
 import { parsePayerFromXPayment } from "../lib/parseXPayment.js";
+import { parseXPaymentResponse } from "../lib/parseXPaymentResponse.js";
 
 const router: RouterType = Router();
 
@@ -255,6 +256,27 @@ router.get("/resources/:id", dynamicPaywall, async (req, res) => {
     }
   }
 
+  // Settlement audit trail — best-effort like the payer extraction above. The
+  // x402 paymentMiddleware sets X-PAYMENT-RESPONSE on res after settling, so
+  // it is readable here; a missing or malformed header never blocks delivery.
+  let settlementTx: string | null = null;
+  const settlementHeader = res.getHeader("X-PAYMENT-RESPONSE") ?? res.getHeader("PAYMENT-RESPONSE");
+  if (typeof settlementHeader === "string" && settlementHeader) {
+    const parsed = parseXPaymentResponse(settlementHeader);
+    if (parsed.settlementTx) {
+      settlementTx = parsed.settlementTx;
+    } else if (parsed.parseError) {
+      getLogger().warn(
+        {
+          event: "x_payment_response_parse_error",
+          resourceId: resource.id,
+          error: parsed.parseError,
+        },
+        "failed to parse X-PAYMENT-RESPONSE header; settlementTx recorded as null",
+      );
+    }
+  }
+
   const [payment] = await db
     .insert(payments)
     .values({
@@ -262,6 +284,7 @@ router.get("/resources/:id", dynamicPaywall, async (req, res) => {
       payerAddress,
       recipientAddress: resource.walletAddress,
       amount: resource.price,
+      settlementTx,
     })
     .returning();
 
