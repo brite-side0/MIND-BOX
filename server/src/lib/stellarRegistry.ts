@@ -76,14 +76,31 @@ export interface OnChainPrice {
   price: string;
   creator: string;
   cached: boolean;
+  /**
+   * True when the value was served from an expired cache entry because a
+   * fresh on-chain fetch failed (stale-on-error fallback). Callers should
+   * log/observe this so degraded RPC periods are visible.
+   */
+  stale?: boolean;
 }
 
 export interface GetOnChainPriceOptions {
   cache?: PriceCache;
   now?: () => number;
   ttlMs?: number;
+  /**
+   * How long past ttlMs an expired cache entry may still be served when the
+   * fresh fetch fails. Bounds the stale-on-error fallback so a price is never
+   * served indefinitely from stale data; beyond ttlMs + staleGraceMs the
+   * lookup throws exactly as before. Serving a recently-valid price keeps the
+   * paywall's DB-vs-chain mismatch check intact while avoiding a hard 503 on
+   * every request during a transient RPC blip.
+   */
+  staleGraceMs?: number;
   fetcher?: (id: string) => Promise<{ price: bigint; creator: string } | null>;
 }
+
+const DEFAULT_STALE_GRACE_MS = 10 * 60 * 1000;
 
 async function defaultFetcher(id: string) {
   const resource = await getResource(id);
@@ -98,6 +115,7 @@ export async function getOnChainPrice(
   const cache = options.cache ?? defaultCache;
   const now = options.now ?? Date.now;
   const ttl = options.ttlMs ?? DEFAULT_TTL_MS;
+  const staleGrace = options.staleGraceMs ?? DEFAULT_STALE_GRACE_MS;
   const fetcher = options.fetcher ?? defaultFetcher;
 
   const cached = cache.get(resourceId);
@@ -109,6 +127,12 @@ export async function getOnChainPrice(
   try {
     record = await fetcher(resourceId);
   } catch (err) {
+    // Stale-on-error fallback: an expired-but-recent cache entry beats a hard
+    // failure for a transient RPC outage. Only within the bounded grace
+    // window; a never-fetched or too-stale resource still fails as before.
+    if (cached && now() - cached.fetchedAt < ttl + staleGrace) {
+      return { price: cached.price, creator: cached.creator, cached: true, stale: true };
+    }
     throw new OnChainLookupError(`Failed to read on-chain record for resource ${resourceId}`, err);
   }
   if (!record) {

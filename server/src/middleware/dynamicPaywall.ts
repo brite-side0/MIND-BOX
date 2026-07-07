@@ -82,6 +82,12 @@ export async function dynamicPaywall(req: Request, res: Response, next: NextFunc
     const onChain = await getOnChainPrice(resourceId);
     onChainPrice = onChain.price;
     onChainCreator = onChain.creator;
+    if (onChain.stale) {
+      getLogger().warn(
+        { event: "paywall_stale_price_served", resourceId, price: onChainPrice },
+        "on-chain fetch failed; served recently-expired cached price within grace window",
+      );
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const cause =
