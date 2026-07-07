@@ -1,16 +1,26 @@
-# Request Signatures (Optional)
+# Request Signatures
 
 Publisher mutations (`POST` and `DELETE` on `/resources/*`) can require an HMAC-SHA256 request signature in addition to the API key. This limits replay and tampering if an API key leaks.
 
-**Off by default.** Set `REQUIRE_REQUEST_SIGNATURE=true` on the server to enforce signatures.
+**On by default in production.** When `NODE_ENV=production` and `REQUIRE_REQUEST_SIGNATURE` is left unset, the server requires signed requests automatically — no configuration needed. Both first-party clients ship signing support out of the box, so this is enforceable with zero onboarding friction:
+
+- MCP server: `mcp/src/requestSignature.ts`, called from `mcp/src/index.ts` before every mutating call.
+- Web dashboard: `web/src/api/requestSignature.ts`, called from the app's mutation flow.
+
+**Off by default in development and test.** When `NODE_ENV` is `development` or `test` and the env var is unset, signatures are not required, so local iteration and the test suite stay unsigned by default.
+
+**Explicit overrides always win**, regardless of `NODE_ENV`:
+
+- Set `REQUIRE_REQUEST_SIGNATURE=false` in production if you deliberately want to accept unsigned requests (e.g. a third-party integration that hasn't implemented signing yet).
+- Set `REQUIRE_REQUEST_SIGNATURE=true` in development/test to exercise the signing flow locally.
 
 ## Headers
 
-| Header | Description |
-|--------|-------------|
-| `x-api-key` | Publisher API key (also the HMAC secret) |
-| `X-Timestamp` | Unix time in **seconds** when the request was signed |
-| `X-Signature` | Lowercase hex HMAC-SHA256 of the canonical string |
+| Header            | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `x-api-key`       | Publisher API key (also the HMAC secret)                |
+| `X-Timestamp`     | Unix time in **seconds** when the request was signed    |
+| `X-Signature`     | Lowercase hex HMAC-SHA256 of the canonical string       |
 | `Idempotency-Key` | Optional; included in the canonical string when present |
 
 ## Canonical string
@@ -46,7 +56,7 @@ Use `crypto.timingSafeEqual` (or equivalent) when comparing on the server.
 Hash the **exact raw UTF-8 bytes** sent as the body:
 
 ```js
-bodyHash = sha256(rawBody).hex()
+bodyHash = sha256(rawBody).hex();
 ```
 
 For an empty body (e.g. `DELETE`, or `POST` with no payload):
@@ -90,8 +100,9 @@ Read-only authenticated routes (`GET /publishers/me`, `GET /resources/{id}/regis
 ## Server configuration
 
 ```env
-# Off by default
-REQUIRE_REQUEST_SIGNATURE=false
+# Optional — leave unset to get the default for NODE_ENV (on in production,
+# off in development/test). Set explicitly to override in either direction.
+# REQUIRE_REQUEST_SIGNATURE=true
 # Max clock skew when signatures are required (milliseconds)
 SIGNATURE_MAX_SKEW_MS=300000
 ```
@@ -128,11 +139,11 @@ curl -X POST "http://localhost:4021$PATH" \
 
 ## Error responses
 
-| Status | `error` field |
-|--------|----------------|
-| 401 | `Missing X-Timestamp header` |
-| 401 | `Missing X-Signature header` |
-| 401 | `Request timestamp outside allowed window` |
-| 401 | `Invalid request signature` |
+| Status | `error` field                              |
+| ------ | ------------------------------------------ |
+| 401    | `Missing X-Timestamp header`               |
+| 401    | `Missing X-Signature header`               |
+| 401    | `Request timestamp outside allowed window` |
+| 401    | `Invalid request signature`                |
 
-When `REQUIRE_REQUEST_SIGNATURE=false`, unsigned requests behave as before (API key only).
+When signatures are not required (effective `REQUIRE_REQUEST_SIGNATURE=false` — the resolved default in development/test, or an explicit override), unsigned requests behave as before (API key only).
