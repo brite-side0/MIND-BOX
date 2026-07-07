@@ -12,6 +12,7 @@ import { beginShutdown, whenDrained, inFlightCount } from "./lib/lifecycle.js";
 import { pgClient } from "./db/client.js";
 import { startPoolMetrics, stopPoolMetrics } from "./db/client.js";
 import { startRetryPendingWorker, stopRetryPendingWorker } from "./workers/retryPendingWorker.js";
+import { startLeaseExpiryWorker, stopLeaseExpiryWorker } from "./workers/leaseExpiryWorker.js";
 import { startEventListener, stopEventListener } from "./workers/eventListener.js";
 import { closeRateLimitStore } from "./lib/rateLimit/index.js";
 
@@ -31,6 +32,7 @@ const server: Server = app.listen(config.PORT, () => {
   );
 
   startRetryPendingWorker();
+  startLeaseExpiryWorker();
   startEventListener();
   startPoolMetrics();
 });
@@ -42,6 +44,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   shuttingDown = true;
 
   stopRetryPendingWorker();
+  stopLeaseExpiryWorker();
   stopEventListener();
   stopPoolMetrics();
 
