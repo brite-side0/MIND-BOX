@@ -7,8 +7,20 @@ import {
   timestamp,
   pgEnum,
   index,
+  customType,
 } from "drizzle-orm/pg-core";
 import { createId } from "@paralleldrive/cuid2";
+
+// Postgres `tsvector` used for catalog full-text search (migration 0008). The
+// column is a STORED generated column in the DB, so it is read-only from the
+// app's perspective — it is only ever referenced in FTS predicates/ranking,
+// never inserted or updated. Drizzle has no native tsvector type, so we declare
+// a minimal custom type just so queries can reference `resources.searchVector`.
+const tsvector = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 export const resourceTypeEnum = pgEnum("resource_type", ["file", "link"]);
 
@@ -63,6 +75,10 @@ export const resources = pgTable(
     listed: boolean("listed").notNull().default(false),
     onchainStatus: onchainStatusEnum("onchain_status").notNull().default("none"),
     onchainTxHash: text("onchain_tx_hash"),
+    // Generated STORED tsvector (title weighted A, description B) — migration
+    // 0008. Read-only: never written by the app, only matched against in FTS
+    // catalog search. See resourceService.queryCatalogSearch.
+    searchVector: tsvector("search_vector"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
@@ -71,6 +87,8 @@ export const resources = pgTable(
       table.verificationStatus,
       table.createdAt,
     ),
+    // GIN index backing the full-text `search_vector @@ query` match (#, 0008).
+    searchVectorIdx: index("idx_resources_search_vector").using("gin", table.searchVector),
     // Publisher dashboards list a single publisher's resources (#285).
     publisherIdx: index("idx_resources_publisher_id").on(table.publisherId),
     // Verification-status filters that aren't anchored to `listed` can't use the
