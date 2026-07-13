@@ -20,6 +20,6 @@ jobs:
       # (google-github-actions/release-please-action is deprecated). v4 does
       # not accept package-name/extra-files inputs; component naming comes
       # from include-component-in-tag and monorepo manifests if needed.
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           release-type: node
